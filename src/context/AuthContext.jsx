@@ -4,12 +4,14 @@ import { supabase } from '../lib/supabase'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser]           = useState(null)
+  const [profile, setProfile]     = useState(null)
+  const [loading, setLoading]     = useState(true)  // auth loading
+  const [profileLoading, setProfileLoading] = useState(false)
 
   const loadProfile = async (authUser) => {
     if (!authUser) { setProfile(null); return }
+    setProfileLoading(true)
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -18,7 +20,6 @@ export function AuthProvider({ children }) {
         .single()
 
       if (error || !data) {
-        // Profile doesn't exist yet — create it
         const newProfile = {
           id: authUser.id,
           email: authUser.email,
@@ -32,21 +33,21 @@ export function AuthProvider({ children }) {
       }
     } catch {
       setProfile({ id: authUser.id, email: authUser.email, role: 'client' })
+    } finally {
+      setProfileLoading(false)
     }
   }
 
   useEffect(() => {
-    // Get existing session (persisted in localStorage by Supabase)
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
-      loadProfile(session?.user ?? null).finally(() => setLoading(false))
+      await loadProfile(session?.user ?? null)
+      setLoading(false)
     })
 
-    // Listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
       await loadProfile(session?.user ?? null)
-      // Don't set loading false here — only on initial load
     })
 
     return () => subscription.unsubscribe()
@@ -55,7 +56,6 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    // Session is automatically persisted by Supabase
     return data
   }
 
@@ -65,13 +65,15 @@ export function AuthProvider({ children }) {
     setProfile(null)
   }
 
-  const isAdmin  = profile?.role === 'admin'
-  const isClient = profile?.role === 'client'
+  // fullyLoaded = both auth AND profile are resolved
+  const fullyLoaded = !loading && !profileLoading
 
   return (
     <AuthContext.Provider value={{
       user, profile, loading,
-      isAdmin, isClient,
+      profileLoading, fullyLoaded,
+      isAdmin: profile?.role === 'admin',
+      isClient: profile?.role === 'client',
       role: profile?.role,
       login, logout,
     }}>
