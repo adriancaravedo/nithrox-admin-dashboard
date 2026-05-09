@@ -14,9 +14,6 @@ returns boolean language sql security definer as $$
   );
 $$;
 
--- ── Profiles (already exists — extend it) ─────────────────────
-alter table profiles add column if not exists contact_id uuid references contacts(id) on delete set null;
-
 -- ── Companies ────────────────────────────────────────────────
 create table if not exists companies (
   id            uuid primary key default gen_random_uuid(),
@@ -54,7 +51,7 @@ create table if not exists contacts (
 );
 alter table contacts enable row level security;
 
--- Now add contact_id FK to profiles (after contacts table exists)
+-- ── Extend profiles with contact_id (after contacts table exists) ──
 alter table profiles add column if not exists contact_id uuid references contacts(id) on delete set null;
 
 -- ── Deals ────────────────────────────────────────────────────
