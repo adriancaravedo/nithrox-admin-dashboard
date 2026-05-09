@@ -39,18 +39,24 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // Fallback: never stay stuck more than 8s
+    const timeout = setTimeout(() => setLoading(false), 8000)
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout)
       setUser(session?.user ?? null)
       await loadProfile(session?.user ?? null)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // INITIAL_SESSION is already handled by getSession above — skip to avoid double-load
+      if (event === 'INITIAL_SESSION') return
       setUser(session?.user ?? null)
       await loadProfile(session?.user ?? null)
     })
 
-    return () => subscription.unsubscribe()
+    return () => { clearTimeout(timeout); subscription.unsubscribe() }
   }, [])
 
   const login = async (email, password) => {
