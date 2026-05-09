@@ -118,10 +118,6 @@ export default function Sidebar() {
               <X className="w-4 h-4" />
             </button>
 
-            {/* Desktop collapse */}
-            <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
           </>
         )}
 
