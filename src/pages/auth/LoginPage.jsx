@@ -4,10 +4,10 @@ import { toast } from 'sonner'
 
 export default function LoginPage() {
   const { login } = useAuth()
-  const [email, setEmail]       = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [showPass, setShowPass] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -40,7 +40,8 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Email</label>
-              <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(null) }}
+              <input type="email" value={email}
+                onChange={e => { setEmail(e.target.value); setError(null) }}
                 placeholder="tu@email.com" autoFocus autoComplete="email"
                 className="w-full px-3.5 py-2.5 border border-zinc-200 rounded-xl text-sm outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 transition-all" />
             </div>
@@ -50,7 +51,7 @@ export default function LoginPage() {
                 <input type={showPass ? 'text' : 'password'} value={password}
                   onChange={e => { setPassword(e.target.value); setError(null) }}
                   placeholder="••••••••" autoComplete="current-password"
-                  className="w-full px-3.5 py-2.5 border border-zinc-200 rounded-xl text-sm outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 transition-all pr-16" />
+                  className="w-full px-3.5 py-2.5 border border-zinc-200 rounded-xl text-sm outline-none focus:border-zinc-900 pr-16 transition-all" />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 text-[10px] font-bold uppercase tracking-widest">
                   {showPass ? 'Ocultar' : 'Ver'}
@@ -70,10 +71,11 @@ export default function LoginPage() {
           </form>
         </div>
         <div className="px-7 py-4 border-t border-zinc-100 bg-zinc-50 text-center">
-          <p className="text-[10px] text-zinc-400">¿Problemas? Escribe a <a href="mailto:hola@nithrox.com" className="text-zinc-600 font-bold">hola@nithrox.com</a></p>
+          <p className="text-[10px] text-zinc-400">
+            ¿Problemas? <a href="mailto:hola@nithrox.com" className="text-zinc-600 font-bold">hola@nithrox.com</a>
+          </p>
         </div>
       </div>
-      <p className="text-[10px] text-zinc-400 mt-6">NTX Labs LLC · Nithrox © {new Date().getFullYear()}</p>
     </div>
   )
 }
