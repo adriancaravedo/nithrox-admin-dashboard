@@ -73,7 +73,7 @@ const CONTRACT_STATUS = {
 export default function ContactDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { contacts, companies, deals, updateContact, addCompany, addDeal } = useStore()
+  const { contacts, companies, deals, contracts: storeContracts, updateContact, addCompany, addDeal } = useStore()
 
   const contact = contacts.find(c => c.id === id)
   if (!contact) return (
@@ -84,31 +84,21 @@ export default function ContactDetail() {
   )
 
   const company = companies.find(c => c.id === contact.company_id)
-  const contactDeals = deals.filter(d => contact.deals?.includes(d.id))
+  const contactDeals = deals.filter(d => d.contact_ids?.includes(id) || d.company_id === contact.company_id)
+  const contactContracts = (storeContracts || []).filter(c => c.contact_id === id)
 
   // Load custom cols from localStorage — reactive
   const customCols = loadState(COL_DEFS_KEY_CONTACTS, []).filter(c => c.id?.startsWith('col_'))
 
   // Tasks
-  const [tasks, setTasks] = useState([
-    { id: 't1', title: 'Enviar propuesta actualizada', done: false, due: '25 Abr' },
-    { id: 't2', title: 'Confirmar reunión kick off', done: true, due: '22 Abr' },
-  ])
+  const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState('')
   const [addingTask, setAddingTask] = useState(false)
 
   // Notes
-  const [notes, setNotes] = useState([
-    { id: 'n1', content: 'Cliente interesada en diseño personalizado. Prefiere email.', at: new Date(Date.now() - 3600000).toISOString(), pinned: true },
-    { id: 'n2', content: 'Presupuesto aprobado hasta $8,000.', at: new Date(Date.now() - 86400000).toISOString(), pinned: false },
-  ])
+  const [notes, setNotes] = useState([])
   const [newNote, setNewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
-
-  // Contracts (local)
-  const [contracts, setContracts] = useState([
-    { id: 'ct1', name: 'Contrato de servicios web', status: 'signed', date: '01 Abr 2026' },
-  ])
 
   // Add company/deal dialogs
   const [showAddCompany, setShowAddCompany] = useState(false)
@@ -155,27 +145,27 @@ export default function ContactDetail() {
     { key: 'created_at', label: 'Fecha de creación', type: 'text' },
   ]
 
-  const handleAddCompanySubmit = () => {
+  const handleAddCompanySubmit = async () => {
     if (addCompanyForm.existing_id) {
-      updateContact(id, { company_id: addCompanyForm.existing_id })
+      await updateContact(id, { company_id: addCompanyForm.existing_id })
     } else if (addCompanyForm.new_name.trim()) {
-      const newCo = { name: addCompanyForm.new_name.trim(), contacts: [id] }
-      addCompany(newCo)
+      const newCo = { name: addCompanyForm.new_name.trim() }
+      await addCompany(newCo)
     }
     setShowAddCompany(false)
     setAddCompanyForm({ existing_id: '', new_name: '' })
   }
 
-  const handleAddDealSubmit = () => {
+  const handleAddDealSubmit = async () => {
     if (addDealForm.name.trim()) {
-      addDeal({
+      await addDeal({
         name: addDealForm.name,
         amount: parseFloat(addDealForm.amount) || 0,
         currency: addDealForm.currency,
         stage: addDealForm.stage,
         owner: 'Adrian Caravedo',
-        contacts: [id],
-        company_id: contact.company_id,
+        contact_ids: [id],
+        company_id: contact.company_id || null,
       })
     }
     setShowAddDeal(false)
@@ -308,17 +298,10 @@ export default function ContactDetail() {
                 <div>
                   <h3 className="text-sm font-semibold mb-3">Reuniones y actividad</h3>
                   <div className="space-y-2">
-                    {[
-                      { icon: '📅', label: 'Reunión kick off agendada', date: '21 Abr 2026 · 10:00 AM' },
-                      { icon: '📧', label: 'Email enviado — propuesta v2', date: '20 Abr 2026' },
-                      { icon: '📞', label: 'Llamada registrada', date: '18 Abr 2026' },
-                      { icon: '📋', label: 'Contacto creado', date: formatDate(contact.created_at) },
-                    ].map((a, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-background hover:border-border transition-colors">
-                        <span className="text-base shrink-0">{a.icon}</span>
-                        <div><p className="text-sm">{a.label}</p><p className="text-xs text-muted-foreground mt-0.5">{a.date}</p></div>
-                      </div>
-                    ))}
+                    <div className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-background hover:border-border transition-colors">
+                      <span className="text-base shrink-0">📋</span>
+                      <div><p className="text-sm">Contacto creado</p><p className="text-xs text-muted-foreground mt-0.5">{formatDate(contact.created_at)}</p></div>
+                    </div>
                   </div>
                 </div>
               </>
@@ -418,13 +401,16 @@ export default function ContactDetail() {
               )}
             </div>
 
-            {/* Contracts — sin Add button */}
+            {/* Contracts */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold">Contratos ({contracts.length})</h3>
+                <h3 className="text-xs font-semibold">Contratos ({contactContracts.length})</h3>
+                <button onClick={() => navigate('/contracts')} className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  <Plus className="w-3 h-3" /> Add
+                </button>
               </div>
               <div className="space-y-2">
-                {contracts.map(ct => {
+                {contactContracts.map(ct => {
                   const st = CONTRACT_STATUS[ct.status]
                   return (
                     <div key={ct.id} className="border border-border rounded-lg p-3">
@@ -432,25 +418,15 @@ export default function ContactDetail() {
                         <p className="text-xs font-medium leading-tight flex-1">{ct.name}</p>
                         <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${st?.color}`}>{st?.label}</span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{ct.date}</p>
-                      <div className="flex gap-2 mt-1.5 items-center">
-                        <button className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
-                          <FileText className="w-3 h-3" /> Ver
-                        </button>
-                        <select value={ct.status} onChange={e => setContracts(p => p.map(c => c.id === ct.id ? { ...c, status: e.target.value } : c))}
-                          className="text-[10px] border border-border rounded px-1 bg-background text-muted-foreground ml-1">
-                          {Object.entries(CONTRACT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                        </select>
-                        <button onClick={() => setContracts(p => p.filter(c => c.id !== ct.id))} className="ml-auto text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+                      <button onClick={() => navigate('/contracts')} className="text-[10px] text-primary hover:underline flex items-center gap-0.5 mt-1">
+                        <FileText className="w-3 h-3" /> Ver contrato
+                      </button>
                     </div>
                   )
                 })}
-                {contracts.length === 0 && (
-                  <div className="border border-dashed border-border rounded-lg p-4 text-center">
-                    <p className="text-xs text-muted-foreground">Sin contratos asociados</p>
+                {contactContracts.length === 0 && (
+                  <div className="border border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate('/contracts')}>
+                    <p className="text-xs text-muted-foreground">Sin contratos. Click para crear.</p>
                   </div>
                 )}
               </div>

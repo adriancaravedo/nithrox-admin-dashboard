@@ -8,8 +8,8 @@ import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import {
-  ChevronDown, Plus, ExternalLink, Mail, Phone,
-  ListTodo, Calendar, MoreHorizontal, Pencil, Trash2,
+  Plus, ExternalLink, Mail, Phone,
+  ListTodo, Calendar,
   Check, X, Building2, FileText
 } from 'lucide-react'
 
@@ -29,12 +29,9 @@ const CONTRACT_STATUS = {
 export function CompanyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { companies, contacts, deals, updateCompany } = useStore()
+  const { companies, contacts, deals, contracts: storeContracts, updateCompany } = useStore()
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
-  const [contracts, setContracts] = useState([
-    { id: 'ct1', name: 'Contrato de servicios', status: 'signed', date: '01 Abr 2026' },
-  ])
 
   const company = companies.find(c => c.id === id)
   if (!company) return (
@@ -44,8 +41,9 @@ export function CompanyDetail() {
     </div>
   )
 
-  const companyContacts = contacts.filter(c => company.contacts?.includes(c.id))
-  const companyDeals = deals.filter(d => company.deals?.includes(d.id))
+  const companyContacts = contacts.filter(c => c.company_id === id)
+  const companyDeals = deals.filter(d => d.company_id === id)
+  const companyContracts = (storeContracts || []).filter(c => c.company_id === id)
 
   const startEdit = (field, value) => { setEditField(field); setEditValue(value || '') }
   const saveEdit = () => { if (editField) updateCompany(id, { [editField]: editValue }); setEditField(null) }
@@ -117,36 +115,13 @@ export function CompanyDetail() {
 
         {/* CENTER */}
         <div className="flex-1 overflow-y-auto border-r border-border p-5 space-y-4">
-          <div className="border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-3 bg-muted/30 border-b border-border">
-              <h3 className="text-sm font-medium">Company insights</h3>
-              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">+ AI</span>
-            </div>
-            <div className="p-4">
-              <ul className="space-y-1.5 text-sm text-muted-foreground">
-                <li>• <strong className="text-foreground">Próximo:</strong> Reunión de seguimiento programada.</li>
-                <li>• <strong className="text-foreground">Actividad reciente:</strong> Alto interés detectado en las últimas interacciones.</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-3 bg-muted/30 border-b border-border">
-              <h3 className="text-sm font-medium">Recent interactions</h3>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
-              <div className="border border-border rounded-md p-3 text-center">
-                <p className="text-xs font-medium mb-2 text-muted-foreground">Inbound</p>
-                <p className="text-xs text-muted-foreground py-3">Sin actividad inbound.</p>
-              </div>
-              <div className="border border-border rounded-md p-3">
-                <p className="text-xs font-medium mb-2 text-muted-foreground">Outbound</p>
-                {companyDeals.length > 0 ? (
-                  <div className="space-y-2 text-xs">
-                    <div className="flex gap-2"><span>📅</span><div><p className="text-primary cursor-pointer hover:underline">Reunión — Kick off</p><p className="text-muted-foreground">{formatDate(company.last_activity)}</p></div></div>
-                    <div className="flex gap-2"><span>📞</span><div><p className="text-primary cursor-pointer hover:underline">Llamada registrada</p><p className="text-muted-foreground">{formatDate(company.created_at)}</p></div></div>
-                  </div>
-                ) : <p className="text-xs text-muted-foreground text-center py-2">Sin actividad</p>}
+          <h3 className="text-sm font-semibold">Actividad</h3>
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-background hover:border-border transition-colors">
+              <span className="text-base shrink-0">🏢</span>
+              <div>
+                <p className="text-sm">Empresa creada</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{formatDate(company.created_at)}</p>
               </div>
             </div>
           </div>
@@ -158,7 +133,7 @@ export function CompanyDetail() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold">Contacts ({companyContacts.length})</h3>
-              <button className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
+              <button onClick={() => navigate('/clients/contacts')} className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
             </div>
             {companyContacts.map(contact => (
               <div key={contact.id} className="border border-border rounded-lg p-3 mb-2">
@@ -180,7 +155,7 @@ export function CompanyDetail() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold">Deals ({companyDeals.length})</h3>
-              <button className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
+              <button onClick={() => navigate('/clients/deals')} className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
             </div>
             {companyDeals.map(deal => (
               <div key={deal.id} className="border border-border rounded-lg p-3 mb-2">
@@ -201,10 +176,10 @@ export function CompanyDetail() {
           {/* Contracts */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold">Contratos ({contracts.length})</h3>
-              <button className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
+              <h3 className="text-xs font-semibold">Contratos ({companyContracts.length})</h3>
+              <button onClick={() => navigate('/contracts')} className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
             </div>
-            {contracts.map(ct => {
+            {companyContracts.map(ct => {
               const st = CONTRACT_STATUS[ct.status]
               return (
                 <div key={ct.id} className="border border-border rounded-lg p-3 mb-2">
@@ -212,20 +187,17 @@ export function CompanyDetail() {
                     <p className="text-xs font-medium flex-1">{ct.name}</p>
                     <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${st?.color}`}>{st?.label}</span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mb-1.5">{ct.date}</p>
-                  <div className="flex gap-2">
-                    <button className="text-[10px] text-primary hover:underline">Ver</button>
-                    <select value={ct.status} onChange={e => setContracts(p => p.map(c => c.id === ct.id ? { ...c, status: e.target.value } : c))}
-                      className="text-[10px] border border-border rounded px-1 bg-background text-muted-foreground">
-                      {Object.entries(CONTRACT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
-                    <button onClick={() => setContracts(p => p.filter(c => c.id !== ct.id))} className="text-[10px] text-destructive ml-auto">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+                  <button onClick={() => navigate('/contracts')} className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+                    <FileText className="w-3 h-3" /> Ver contrato
+                  </button>
                 </div>
               )
             })}
+            {companyContracts.length === 0 && (
+              <div className="border border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate('/contracts')}>
+                <p className="text-xs text-muted-foreground">Sin contratos. Click para crear.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -236,12 +208,9 @@ export function CompanyDetail() {
 export function DealDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { deals, companies, contacts, updateDeal } = useStore()
+  const { deals, companies, contacts, contracts: storeContracts, updateDeal } = useStore()
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
-  const [contracts, setContracts] = useState([
-    { id: 'ct1', name: 'Contrato de servicios', status: 'signed', date: '01 Abr 2026' },
-  ])
 
   const deal = deals.find(d => d.id === id)
   if (!deal) return (
@@ -252,7 +221,8 @@ export function DealDetail() {
   )
 
   const company = companies.find(c => c.id === deal.company_id)
-  const dealContacts = contacts.filter(c => deal.contacts?.includes(c.id))
+  const dealContacts = contacts.filter(c => deal.contact_ids?.includes(c.id))
+  const dealContracts = (storeContracts || []).filter(c => c.company_id === deal.company_id)
 
   const startEdit = (field, value) => { setEditField(field); setEditValue(value || '') }
   const saveEdit = () => { if (editField) updateDeal(id, { [editField]: editValue }); setEditField(null) }
@@ -387,10 +357,10 @@ export function DealDetail() {
           {/* Contracts */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold">Contratos ({contracts.length})</h3>
-              <button className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
+              <h3 className="text-xs font-semibold">Contratos ({dealContracts.length})</h3>
+              <button onClick={() => navigate('/contracts')} className="text-xs text-primary hover:underline flex items-center gap-0.5"><Plus className="w-3 h-3" /> Add</button>
             </div>
-            {contracts.map(ct => {
+            {dealContracts.map(ct => {
               const st = CONTRACT_STATUS[ct.status]
               return (
                 <div key={ct.id} className="border border-border rounded-lg p-3 mb-2">
@@ -398,20 +368,17 @@ export function DealDetail() {
                     <p className="text-xs font-medium flex-1">{ct.name}</p>
                     <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${st?.color}`}>{st?.label}</span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mb-1.5">{ct.date}</p>
-                  <div className="flex gap-2 items-center">
-                    <button className="text-[10px] text-primary hover:underline">Ver</button>
-                    <select value={ct.status} onChange={e => setContracts(p => p.map(c => c.id === ct.id ? { ...c, status: e.target.value } : c))}
-                      className="text-[10px] border border-border rounded px-1 bg-background text-muted-foreground">
-                      {Object.entries(CONTRACT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
-                    <button onClick={() => setContracts(p => p.filter(c => c.id !== ct.id))} className="text-[10px] text-destructive ml-auto">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+                  <button onClick={() => navigate('/contracts')} className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+                    <FileText className="w-3 h-3" /> Ver contrato
+                  </button>
                 </div>
               )
             })}
+            {dealContracts.length === 0 && (
+              <div className="border border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate('/contracts')}>
+                <p className="text-xs text-muted-foreground">Sin contratos. Click para crear.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
