@@ -6,6 +6,15 @@ import Layout from './components/layout/Layout'
 import CommandPalette from './components/shared/CommandPalette'
 import LoginPage from './pages/auth/LoginPage'
 
+// Portal
+import PortalLayout from './pages/portal/PortalLayout'
+import PortalDashboard from './pages/portal/PortalDashboard'
+import PortalProyecto from './pages/portal/PortalProyecto'
+import PortalPagos from './pages/portal/PortalPagos'
+import PortalDocumentos from './pages/portal/PortalDocumentos'
+import PortalMensajes from './pages/portal/PortalMensajes'
+
+// Admin pages
 import Dashboard from './pages/nithrox/dashboard/Dashboard'
 import ClientsPage from './pages/nithrox/crm/ClientsPage'
 import ContactDetail from './pages/nithrox/crm/ContactDetail'
@@ -29,8 +38,7 @@ import SettingsPage from './pages/nithrox/settings/SettingsPage'
 
 function Loading() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50"
-      style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50" style={{ fontFamily: "'Geist Mono', monospace" }}>
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
         <p className="text-xs text-zinc-400 uppercase tracking-widest">Cargando...</p>
@@ -49,29 +57,9 @@ function RequireAuth({ children, adminOnly = false }) {
 
 function RequireGuest({ children }) {
   const { user, profile, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <Loading />
   if (user) return <Navigate to={profile?.role === 'admin' ? '/dashboard' : '/portal'} replace />
   return children
-}
-
-function PortalPlaceholder() {
-  const { profile, logout } = useAuth()
-  return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4"
-      style={{ fontFamily: "'Geist Mono', monospace" }}>
-      <div className="text-center max-w-sm">
-        <div className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-white font-black text-lg">NTX</span>
-        </div>
-        <h1 className="text-xl font-bold mb-2">Hola, {profile?.name || profile?.email} 👋</h1>
-        <p className="text-zinc-500 text-sm mb-6">Tu portal está en construcción.<br />Pronto podrás ver tus proyectos aquí.</p>
-        <button onClick={logout}
-          className="w-full py-2.5 border border-zinc-200 rounded-xl text-sm font-bold hover:bg-zinc-100 transition-colors uppercase tracking-widest">
-          Cerrar sesión
-        </button>
-      </div>
-    </div>
-  )
 }
 
 export default function App() {
@@ -82,8 +70,19 @@ export default function App() {
           <Toaster position="bottom-right"
             toastOptions={{ style: { fontFamily: 'Geist Mono, monospace', fontSize: '13px', borderRadius: '12px' } }} />
           <Routes>
+            {/* Public */}
             <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
-            <Route path="/portal" element={<RequireAuth><PortalPlaceholder /></RequireAuth>} />
+
+            {/* Client portal */}
+            <Route path="/portal" element={<RequireAuth><PortalLayout /></RequireAuth>}>
+              <Route index element={<PortalDashboard />} />
+              <Route path="proyecto" element={<PortalProyecto />} />
+              <Route path="pagos" element={<PortalPagos />} />
+              <Route path="documentos" element={<PortalDocumentos />} />
+              <Route path="mensajes" element={<PortalMensajes />} />
+            </Route>
+
+            {/* Admin */}
             <Route element={<RequireAuth adminOnly><CommandPalette /><Layout /></RequireAuth>}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
