@@ -66,8 +66,19 @@ export const useStore = create((set, get) => ({
       db.companies.update(company_id, {})
     }
 
-    const payload = { ...contact, company_id, avatar_color }
-    delete payload.new_company_name
+    // Only send columns that exist in the contacts table
+    const payload = {
+      name: contact.name,
+      email: contact.email || null,
+      phone: contact.phone || null,
+      role: contact.role || null,
+      company_id: company_id || null,
+      lead_status: contact.lead_status || 'New',
+      preferred_channels: contact.preferred_channels || null,
+      topics: contact.topics || null,
+      notes: contact.notes || null,
+      avatar_color,
+    }
 
     const { data } = await db.contacts.create(payload)
     if (data) set(s => ({ contacts: [...s.contacts, data] }))
@@ -88,11 +99,23 @@ export const useStore = create((set, get) => ({
     const COLORS = ['#7c3aed','#2563eb','#16a34a','#d97706','#dc2626','#0891b2','#64748b']
     const avatar_color = COLORS[Math.floor(Math.random() * COLORS.length)]
 
-    const payload = { ...company, avatar_color, owner: 'Adrian Caravedo' }
-    const contactName = payload.new_contact_name
-    const contactId = payload.contact_id
-    delete payload.new_contact_name
-    delete payload.contact_id
+    const contactName = company.new_contact_name
+    const contactId = company.contact_id
+
+    // Only send columns that exist in the companies table
+    const payload = {
+      name: company.name,
+      domain: company.domain || null,
+      industry: company.industry || null,
+      city: company.city || null,
+      country: company.country || 'Perú',
+      ruc: company.ruc || null,
+      phone: company.phone || null,
+      owner: 'Adrian Caravedo',
+      lifecycle: company.lifecycle || 'Lead',
+      lead_status: company.lead_status || 'New',
+      avatar_color,
+    }
 
     const { data: co } = await db.companies.create(payload)
     if (!co) return
