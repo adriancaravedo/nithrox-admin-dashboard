@@ -1,37 +1,50 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { ROLES } from '../lib/utils'
-import { DEMO_TEAM } from '../lib/demo-data'
 
 const AuthContext = createContext(null)
 
-// Demo mode: always logged in as admin
-const DEMO_USER = DEMO_TEAM[0]
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(DEMO_USER)
-  const [loading, setLoading] = useState(false)
+  const [user, setUser]       = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const role = user?.role || 'admin'
-  const allowedPages = ROLES[role]?.pages || []
-
-  const canAccess = (page) => {
-    if (!user) return false
-    if (role === 'admin' || allowedPages.includes('*')) return true
-    return allowedPages.includes(page)
+  const loadProfile = async (authUser) => {
+    if (!authUser) { setProfile(null); return }
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .single()
+    setProfile(data || { id: authUser.id, email: authUser.email, role: 'client' })
   }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      loadProfile(session?.user ?? null).finally(() => setLoading(false))
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+      loadProfile(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const login = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   }
 
-  const logout = () => {
-    setUser(null)
+  const logout = async () => {
+    await supabase.auth.signOut()
+    setUser(null); setProfile(null)
   }
 
+  const isAdmin  = profile?.role === 'admin'
+  const isClient = profile?.role === 'client'
+
   return (
-    <AuthContext.Provider value={{ user, loading, role, canAccess, login, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isClient, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
