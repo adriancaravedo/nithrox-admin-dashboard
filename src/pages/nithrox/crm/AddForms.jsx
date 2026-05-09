@@ -7,25 +7,27 @@ import { validateField } from '../../../lib/columnTypes'
 import { COL_DEFS_KEY_CONTACTS, COL_DEFS_KEY_COMPANIES } from '../../../lib/columnTypes'
 import { CONTACTS_DEFAULT_COLS } from './ContactsTab'
 import { COMPANIES_DEFAULT_COLS } from './CompaniesTab'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 // ── Reusable Modal ────────────────────────────────────────────
-function Modal({ open, onClose, title, children, onSubmit, submitLabel, submitDisabled }) {
+function Modal({ open, onClose, title, children, onSubmit, submitLabel, submitDisabled, loading }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget && !loading) onClose() }}>
       <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent transition-colors">
+          <button onClick={onClose} disabled={loading} className="text-muted-foreground hover:text-foreground w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent transition-colors disabled:opacity-40">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="px-6 pb-4 space-y-4 overflow-y-auto flex-1">{children}</div>
         <div className="flex gap-3 justify-end px-6 py-4 border-t border-border shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors">Cancelar</button>
-          <button onClick={onSubmit} disabled={submitDisabled}
-            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium">
+          <button onClick={onClose} disabled={loading} className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-40">Cancelar</button>
+          <button onClick={onSubmit} disabled={submitDisabled || loading}
+            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium flex items-center gap-2">
+            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {submitLabel}
           </button>
         </div>
@@ -93,8 +95,8 @@ export function AddContactDialog({ open, onClose }) {
     custom: {}
   })
   const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
 
-  // Load custom cols from localStorage
   const customCols = loadState(COL_DEFS_KEY_CONTACTS, []).filter(c => c.id?.startsWith('col_'))
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
@@ -105,7 +107,6 @@ export function AddContactDialog({ open, onClose }) {
     if (!f.name.trim()) errs.name = 'Requerido'
     const emailErr = validateField('email', f.email)
     if (f.email && emailErr) errs.email = emailErr
-    // Validate custom cols
     customCols.forEach(col => {
       const err = validateField(col.type, f.custom?.[col.id])
       if (err) errs[col.id] = err
@@ -114,19 +115,28 @@ export function AddContactDialog({ open, onClose }) {
     return Object.keys(errs).length === 0
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return
-    addContact(f)
-    setF({ name: '', email: '', phone: '', role: '', company_id: '', new_company_name: '', lead_status: 'New', preferred_channels: '', topics: '', notes: '', custom: {} })
-    setErrors({})
-    onClose()
+    setLoading(true)
+    try {
+      const result = await addContact(f)
+      if (!result) throw new Error('No se pudo crear el contacto')
+      toast.success(`Contacto "${f.name}" creado`)
+      setF({ name: '', email: '', phone: '', role: '', company_id: '', new_company_name: '', lead_status: 'New', preferred_channels: '', topics: '', notes: '', custom: {} })
+      setErrors({})
+      onClose()
+    } catch (err) {
+      toast.error(err?.message || 'Error al crear contacto')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const companyOptions = companies.map(c => ({ value: c.id, label: c.name }))
 
   return (
     <Modal open={open} onClose={onClose} title="Nuevo contacto"
-      onSubmit={handleSubmit} submitLabel="Crear contacto" submitDisabled={!f.name.trim()}>
+      onSubmit={handleSubmit} submitLabel="Crear contacto" submitDisabled={!f.name.trim()} loading={loading}>
 
       <Field label="Nombre completo" required>
         <input value={f.name} onChange={e => set('name', e.target.value)} placeholder="María Quispe"
@@ -209,6 +219,7 @@ export function AddCompanyDialog({ open, onClose }) {
     ruc: '', phone: '', contact_id: '', new_contact_name: '', custom: {}
   })
   const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
 
   const customCols = loadState(COL_DEFS_KEY_COMPANIES, []).filter(c => c.id?.startsWith('col_'))
 
@@ -226,19 +237,28 @@ export function AddCompanyDialog({ open, onClose }) {
     return Object.keys(errs).length === 0
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return
-    addCompany(f)
-    setF({ name: '', domain: '', industry: '', city: '', country: 'Perú', ruc: '', phone: '', contact_id: '', new_contact_name: '', custom: {} })
-    setErrors({})
-    onClose()
+    setLoading(true)
+    try {
+      const result = await addCompany(f)
+      if (!result) throw new Error('No se pudo crear la empresa')
+      toast.success(`Empresa "${f.name}" creada`)
+      setF({ name: '', domain: '', industry: '', city: '', country: 'Perú', ruc: '', phone: '', contact_id: '', new_contact_name: '', custom: {} })
+      setErrors({})
+      onClose()
+    } catch (err) {
+      toast.error(err?.message || 'Error al crear empresa')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const contactOptions = contacts.map(c => ({ value: c.id, label: c.name }))
 
   return (
     <Modal open={open} onClose={onClose} title="Nueva empresa"
-      onSubmit={handleSubmit} submitLabel="Crear empresa" submitDisabled={!f.name.trim()}>
+      onSubmit={handleSubmit} submitLabel="Crear empresa" submitDisabled={!f.name.trim()} loading={loading}>
 
       <Field label="Nombre de la empresa" required>
         <input value={f.name} onChange={e => set('name', e.target.value)} placeholder="Fashion Co."
@@ -314,17 +334,27 @@ export function AddDealDialog({ open, onClose }) {
     name: '', amount: '', currency: 'USD', stage: 'new',
     close_date: '', company_id: '', type: 'New Business', priority: 'Medium'
   })
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!f.name) return
-    addDeal({ ...f, amount: parseFloat(f.amount) || 0, owner: 'Adrian Caravedo' })
-    setF({ name: '', amount: '', currency: 'USD', stage: 'new', close_date: '', company_id: '', type: 'New Business', priority: 'Medium' })
-    onClose()
+    setLoading(true)
+    try {
+      const result = await addDeal({ ...f, amount: parseFloat(f.amount) || 0, owner: 'Adrian Caravedo' })
+      if (!result) throw new Error('No se pudo crear el deal')
+      toast.success(`Deal "${f.name}" creado`)
+      setF({ name: '', amount: '', currency: 'USD', stage: 'new', close_date: '', company_id: '', type: 'New Business', priority: 'Medium' })
+      onClose()
+    } catch (err) {
+      toast.error(err?.message || 'Error al crear deal')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Nuevo deal"
-      onSubmit={handleSubmit} submitLabel="Crear deal" submitDisabled={!f.name.trim()}>
+      onSubmit={handleSubmit} submitLabel="Crear deal" submitDisabled={!f.name.trim()} loading={loading}>
 
       <Field label="Nombre del deal" required>
         <input value={f.name} onChange={e => setF(p => ({ ...p, name: e.target.value }))} placeholder="Tienda Online Fashion Co."
