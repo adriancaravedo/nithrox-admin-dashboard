@@ -503,8 +503,7 @@ const DEMO = [
 ]
 
 export default function ContractsPage() {
-  const { companies } = useStore()
-  const [contracts, setContracts] = useState(DEMO)
+  const { companies, contracts, addContract, updateContract, deleteContract } = useStore()
   const [viewContract, setViewContract] = useState(null)
   const [filter, setFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
@@ -513,27 +512,40 @@ export default function ContractsPage() {
   const filtered = filter === 'all' ? contracts : contracts.filter(c =>
     c.status === filter || c.type === filter || c.party_type === filter
   )
-  const update = (id, data) => {
-    setContracts(p => p.map(c => c.id === id ? { ...c, ...data } : c))
-    if (viewContract?.id === id) setViewContract(p => ({ ...p, ...data }))
+
+  const update = async (id, updates) => {
+    await updateContract(id, updates)
+    // Sync viewContract with latest from store
+    const updated = { ...viewContract, ...updates }
+    if (viewContract?.id === id) setViewContract(updated)
   }
 
-  const createContract = () => {
+  const createContract = async () => {
     const co = companies.find(c => c.id === nf.company_id)
     const today = new Date().toLocaleDateString('es-PE')
-    const id = `ct${Date.now()}`
     const typeInfo = CONTRACT_TYPES.find(t => t.id === nf.party_type)
     const nc = {
-      id, name: `${typeInfo?.label || 'Contrato'} — ${co?.name || 'Nuevo'}`,
-      company: co?.name || '', status: 'draft',
-      type: nf.party_type, party_type: nf.party_type,
-      created_at: today, sent_at: null, client_signed_at: null, nithrox_signed_at: null,
+      name: `${typeInfo?.label || 'Contrato'} — ${co?.name || 'Nuevo'}`,
+      company_id: nf.company_id || null,
+      party_type: nf.party_type,
+      status: 'draft',
       expiry_date: nf.expiry_date || null,
-      data: { company: co?.name || '', contact: '', ruc: co?.ruc || '', project: nf.project, amount: nf.amount, currency: nf.currency, duration: nf.duration, date: today, doc_id: id.slice(-5).toUpperCase() }
+      data: {
+        company: co?.name || '', contact: '', ruc: co?.ruc || '',
+        project: nf.project, amount: nf.amount, currency: nf.currency,
+        duration: nf.duration, date: today,
+      },
     }
-    setContracts(p => [...p, nc])
+    const created = await addContract(nc)
     setShowNew(false)
-    setViewContract(nc)
+    if (created) {
+      const shaped = {
+        ...created,
+        company: co?.name || '',
+        type: created.party_type,
+      }
+      setViewContract(shaped)
+    }
   }
 
   // Expiry alerts
@@ -679,7 +691,7 @@ export default function ContractsPage() {
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${st.c}`}>{st.l}</span>
                     </td>
                     <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setContracts(p => p.filter(x => x.id !== c.id))}
+                      <button onClick={() => deleteContract(c.id)}
                         className="w-7 h-7 rounded-md border border-border flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-destructive">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
