@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
+import { useAuth } from '../../../context/AuthContext'
 import { formatRelative, getInitials } from '../../../lib/utils'
 import Topbar from '../../../components/layout/Topbar'
 import { Input } from '../../../components/ui/input'
@@ -76,70 +77,42 @@ function TypingIndicator({ name }) {
 }
 
 export default function MessagesPage() {
-  const { messages, sendMessage, markRead, companies, contacts, deals, projects } = useStore()
+  const { messages, sendMessage, markRead, createConversation, companies, contacts, deals, projects } = useStore()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const [convos, setConvos] = useState(messages)
   const [active, setActive] = useState(messages[0]?.id || null)
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [showNew, setShowNew] = useState(false)
-  const [typing, setTyping] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
   const bottomRef = useRef()
-  const typingTimer = useRef()
 
-  const activeConvo = convos.find(m => m.id === active)
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [active, activeConvo?.messages?.length, typing])
+  // Sync active to first convo once messages load
+  useEffect(() => {
+    if (!active && messages.length > 0) setActive(messages[0].id)
+  }, [messages.length])
+
+  const activeConvo = messages.find(m => m.id === active)
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [active, activeConvo?.messages?.length])
 
   const handleSelect = (id) => { setActive(id); markRead(id) }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!text.trim() || !active) return
     const msg = text.trim()
-    setConvos(prev => prev.map(m => m.id === active
-      ? { ...m, messages: [...m.messages, { id: Date.now().toString(), from: 'admin', text: msg, at: new Date().toISOString() }], last_message: msg, last_at: new Date().toISOString(), unread: 0 }
-      : m
-    ))
-    sendMessage(active, msg)
     setText('')
-
-    // Simulate client typing response after 1.5s
-    clearTimeout(typingTimer.current)
-    setTyping(true)
-    typingTimer.current = setTimeout(() => {
-      setTyping(false)
-      // Simulate client reply
-      const replies = [
-        '¡Perfecto! Muchas gracias por la información.',
-        'Entendido, lo reviso y te confirmo.',
-        '¿Podrías enviarme más detalles sobre eso?',
-        'Excelente, seguimos en contacto.',
-        'De acuerdo, cuándo podemos agendar una llamada?',
-      ]
-      const reply = replies[Math.floor(Math.random() * replies.length)]
-      setConvos(prev => prev.map(m => m.id === active
-        ? { ...m, messages: [...m.messages, { id: (Date.now() + 1).toString(), from: 'client', text: reply, at: new Date().toISOString() }], last_message: reply, last_at: new Date().toISOString() }
-        : m
-      ))
-    }, 2000 + Math.random() * 1500)
+    await sendMessage(active, msg, user?.id, 'admin')
   }
 
-  const handleNewConvo = (contact, company) => {
-    const existing = convos.find(m => m.company_id === contact.company_id)
+  const handleNewConvo = async (contact, company) => {
+    const existing = messages.find(m => m.company_id === contact.company_id)
     if (existing) { setActive(existing.id); setShowNew(false); return }
-    const newConvo = {
-      id: `m${Date.now()}`, company_id: contact.company_id || '',
-      company: company?.name || contact.name, contact: contact.name,
-      avatar_color: contact.avatar_color || '#64748b',
-      initials: getInitials(contact.name), online: true, unread: 0,
-      last_message: 'Conversación iniciada', last_at: new Date().toISOString(), messages: [],
-    }
-    setConvos(prev => [newConvo, ...prev])
-    setActive(newConvo.id)
+    const conv = await createConversation(contact, company)
+    if (conv) setActive(conv.id)
     setShowNew(false)
   }
 
-  const filtered = convos.filter(m =>
+  const filtered = messages.filter(m =>
     m.company.toLowerCase().includes(search.toLowerCase()) ||
     m.contact.toLowerCase().includes(search.toLowerCase())
   )

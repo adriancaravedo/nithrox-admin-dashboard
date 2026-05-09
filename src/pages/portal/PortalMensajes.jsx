@@ -1,43 +1,49 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-
-const INITIAL = [
-  { id: 1, from: 'nithrox', text: '¡Hola! Ya iniciamos con tu proyecto. Esta semana te compartimos el primer avance del diseño.', at: '2026-04-20T10:00:00Z' },
-  { id: 2, from: 'client', text: '¡Perfecto! Estamos muy emocionados.', at: '2026-04-20T10:30:00Z' },
-  { id: 3, from: 'nithrox', text: 'El diseño del home ya está listo. Puedes revisarlo en la sección Proyecto → Diseño.', at: '2026-04-25T09:00:00Z' },
-]
+import { usePortalData } from '../../hooks/usePortalData'
 
 function fmt(iso) {
   return new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
 }
 
 export default function PortalMensajes() {
-  const { profile } = useAuth()
-  const [messages, setMessages] = useState(INITIAL)
+  const { profile, user } = useAuth()
+  const { conversation, loading, sendMessage } = usePortalData(profile?.contact_id)
   const [text, setText] = useState('')
-  const [typing, setTyping] = useState(false)
+  const [sending, setSending] = useState(false)
   const bottomRef = useRef()
+  const adminOnline = localStorage.getItem('ntx_admin_online') !== '0'
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, typing])
+  const msgs = conversation?.messages || []
 
-  const send = () => {
-    if (!text.trim()) return
-    const msg = { id: Date.now(), from: 'client', text: text.trim(), at: new Date().toISOString() }
-    setMessages(p => [...p, msg])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs.length])
+
+  const send = async () => {
+    if (!text.trim() || sending) return
+    setSending(true)
+    const msg = text.trim()
     setText('')
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      setMessages(p => [...p, {
-        id: Date.now() + 1, from: 'nithrox',
-        text: 'Gracias por tu mensaje. Te respondemos a la brevedad.',
-        at: new Date().toISOString()
-      }])
-    }, 2000)
+    await sendMessage(msg, user?.id)
+    setSending(false)
   }
 
-  const adminOnline = localStorage.getItem('ntx_admin_online') !== '0'
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-zinc-400 text-sm">
+        Cargando mensajes...
+      </div>
+    )
+  }
+
+  if (!conversation) {
+    return (
+      <div className="flex items-center justify-center h-64 text-zinc-400 text-sm text-center px-8">
+        No tienes una conversación activa.<br />
+        <span className="text-xs mt-1 block">Nithrox te contactará pronto.</span>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ fontFamily: "'Geist Mono', monospace" }}>
@@ -59,27 +65,27 @@ export default function PortalMensajes() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50">
-        {messages.map(msg => (
-          <div key={msg.id} className={`flex gap-2.5 ${msg.from === 'client' ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${msg.from === 'client' ? 'bg-zinc-600' : 'bg-zinc-900'}`}>
-              {msg.from === 'client' ? (profile?.name?.[0] || 'C') : 'AC'}
-            </div>
-            <div className={`max-w-[75%] flex flex-col ${msg.from === 'client' ? 'items-end' : 'items-start'}`}>
-              <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.from === 'client' ? 'bg-zinc-900 text-white rounded-tr-sm' : 'bg-white border border-zinc-200 rounded-tl-sm'}`}>
-                {msg.text}
-              </div>
-              <p className="text-[10px] text-zinc-400 mt-1">{fmt(msg.at)}</p>
-            </div>
-          </div>
-        ))}
-        {typing && (
-          <div className="flex gap-2.5 items-end">
-            <div className="w-7 h-7 rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-white">AC</div>
-            <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-zinc-200 rounded-tl-sm flex items-center gap-1 h-9">
-              {[0,150,300].map(d => <div key={d} className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
-            </div>
+        {msgs.length === 0 && (
+          <div className="text-center text-xs text-zinc-400 mt-8">
+            No hay mensajes aún. ¡Inicia la conversación!
           </div>
         )}
+        {msgs.map(msg => {
+          const isClient = msg.from_role === 'client'
+          return (
+            <div key={msg.id} className={`flex gap-2.5 ${isClient ? 'flex-row-reverse' : ''}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${isClient ? 'bg-zinc-600' : 'bg-zinc-900'}`}>
+                {isClient ? (profile?.name?.[0] || 'C') : 'AC'}
+              </div>
+              <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
+                <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${isClient ? 'bg-zinc-900 text-white rounded-tr-sm' : 'bg-white border border-zinc-200 rounded-tl-sm'}`}>
+                  {msg.text}
+                </div>
+                <p className="text-[10px] text-zinc-400 mt-1">{fmt(msg.created_at)}</p>
+              </div>
+            </div>
+          )
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -89,7 +95,7 @@ export default function PortalMensajes() {
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
           placeholder="Escribe un mensaje..."
           className="flex-1 bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-zinc-400 transition-colors" />
-        <button onClick={send} disabled={!text.trim()}
+        <button onClick={send} disabled={!text.trim() || sending}
           className="w-10 h-10 bg-zinc-900 text-white rounded-2xl flex items-center justify-center hover:bg-zinc-700 disabled:opacity-40 transition-all shrink-0">
           <Send className="w-4 h-4" />
         </button>

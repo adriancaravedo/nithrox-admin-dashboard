@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { DataProvider } from './context/DataContext'
 import Layout from './components/layout/Layout'
 import CommandPalette from './components/shared/CommandPalette'
 import LoginPage from './pages/auth/LoginPage'
@@ -71,6 +72,7 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
+          <DataProvider>
           <Toaster position="bottom-right"
             toastOptions={{ style: { fontFamily: 'Geist Mono, monospace', fontSize: '13px', borderRadius: '12px' } }} />
           <Routes>
@@ -113,6 +115,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Routes>
+          </DataProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
