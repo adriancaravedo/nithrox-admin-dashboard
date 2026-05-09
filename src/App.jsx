@@ -48,18 +48,18 @@ function Loading() {
 }
 
 function RequireAuth({ children, adminOnly = false }) {
-  const { user, profile, fullyLoaded } = useAuth()
-  // Wait until BOTH auth AND profile are loaded
-  if (!fullyLoaded) return <Loading />
+  const { user, profile, loading } = useAuth()
+  if (loading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
-  if (adminOnly && profile?.role !== 'admin') return <Navigate to="/portal" replace />
+  // If profile not yet resolved wait briefly rather than redirecting to /portal incorrectly
+  if (adminOnly && !profile) return <Loading />
+  if (adminOnly && profile.role !== 'admin') return <Navigate to="/portal" replace />
   return children
 }
 
 function RequireGuest({ children }) {
-  const { user, profile, fullyLoaded } = useAuth()
-  // Wait until BOTH auth AND profile are loaded before redirecting
-  if (!fullyLoaded) return <Loading />
+  const { user, profile, loading } = useAuth()
+  if (loading) return <Loading />
   if (user && profile) {
     return <Navigate to={profile.role === 'admin' ? '/dashboard' : '/portal'} replace />
   }
