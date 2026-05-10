@@ -71,6 +71,34 @@ export const LEAD_STATUSES = [
   'Attempted to Contact', 'Connected',
 ]
 
+export const LIFECYCLE_STAGES = [
+  'Lead', 'Marketing Qualified', 'Sales Qualified', 'Opportunity', 'Customer', 'Evangelist',
+]
+
+// Shared field definitions — drive both the add form and the detail profile
+// type: used by InlineField/TypedInput for editing
+// options: used by select type
+export const CONTACT_FIELD_DEFS = [
+  { id: 'email',              label: 'Email',            type: 'email' },
+  { id: 'phone',              label: 'Teléfono',         type: 'phone' },
+  { id: 'role',               label: 'Cargo / Rol',      type: 'text' },
+  { id: 'lead_status',        label: 'Lead Status',      type: 'select', options: LEAD_STATUSES },
+  { id: 'preferred_channels', label: 'Canal preferido',  type: 'text' },
+  { id: 'topics',             label: 'Temas',            type: 'text' },
+]
+
+export const COMPANY_FIELD_DEFS = [
+  { id: 'domain',      label: 'Dominio / Web',  type: 'text' },
+  { id: 'ruc',         label: 'RUC',            type: 'text' },
+  { id: 'owner',       label: 'Owner',          type: 'text' },
+  { id: 'industry',    label: 'Industria',      type: 'text' },
+  { id: 'phone',       label: 'Teléfono',       type: 'phone' },
+  { id: 'city',        label: 'Ciudad',         type: 'text' },
+  { id: 'country',     label: 'País',           type: 'text' },
+  { id: 'lifecycle',   label: 'Lifecycle',      type: 'select', options: LIFECYCLE_STAGES },
+  { id: 'lead_status', label: 'Lead Status',    type: 'select', options: LEAD_STATUSES },
+]
+
 export const BUSINESSES = [
   { id: 'nithrox', label: 'Nithrox', initials: 'NX', color: '#18181b' },
   { id: 'thelowyx', label: 'TheLowyx', initials: 'TL', color: '#2563eb' },

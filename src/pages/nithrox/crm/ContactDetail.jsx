@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
-import { formatRelative, formatDate, getInitials } from '../../../lib/utils'
+import { formatRelative, formatDate, getInitials, CONTACT_FIELD_DEFS } from '../../../lib/utils'
 import { loadState } from '../../../lib/persist'
 import { COL_DEFS_KEY_CONTACTS } from '../../../lib/columnTypes'
+import { CONTACTS_DEFAULT_COLS } from './ContactsTab'
 import Topbar from '../../../components/layout/Topbar'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -87,8 +88,14 @@ export default function ContactDetail() {
   const contactDeals = deals.filter(d => d.contact_ids?.includes(id) || d.company_id === contact.company_id)
   const contactContracts = (storeContracts || []).filter(c => c.contact_id === id)
 
-  // Load custom cols from localStorage — reactive
-  const customCols = loadState(COL_DEFS_KEY_CONTACTS, []).filter(c => c.id?.startsWith('col_'))
+  // Load active columns from CRM table config (same source as the table view)
+  const activeCols = loadState(COL_DEFS_KEY_CONTACTS, CONTACTS_DEFAULT_COLS)
+
+  // All standard contact fields always shown in the detail (same as the form)
+  const detailFields = CONTACT_FIELD_DEFS
+
+  // Custom columns (col_xxx) — added by user in the CRM table config, synced here
+  const customCols = activeCols.filter(c => c.id?.startsWith('col_'))
 
   // Tasks
   const [tasks, setTasks] = useState([])
@@ -133,17 +140,6 @@ export default function ContactDetail() {
 
   const sortedNotes = [...notes].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
 
-  // Core info fields
-  const CORE_FIELDS = [
-    { key: 'name', label: 'Nombre completo', type: 'text' },
-    { key: 'email', label: 'Email', type: 'email' },
-    { key: 'phone', label: 'Teléfono', type: 'phone' },
-    { key: 'role', label: 'Cargo', type: 'text' },
-    { key: 'lead_status', label: 'Lead Status', type: 'text' },
-    { key: 'preferred_channels', label: 'Canal preferido', type: 'text' },
-    { key: 'topics', label: 'Temas', type: 'text' },
-    { key: 'created_at', label: 'Fecha de creación', type: 'text' },
-  ]
 
   const handleAddCompanySubmit = async () => {
     if (addCompanyForm.existing_id) {
@@ -218,24 +214,22 @@ export default function ContactDetail() {
               </button>
             </div>
 
-            {/* Key information — core + custom */}
+            {/* Key information — driven by shared field defs + custom cols */}
             <div>
               <h3 className="text-xs font-semibold mb-3">Key information</h3>
               <div className="space-y-3">
-                {CORE_FIELDS.map(field => (
-                  <div key={field.key}>
+                {detailFields.map(field => (
+                  <div key={field.id}>
                     <p className="text-[10px] text-muted-foreground mb-0.5">{field.label}</p>
                     <InlineField
                       col={field}
-                      value={field.key === 'created_at' || field.key === 'last_activity'
-                        ? formatRelative(contact[field.key])
-                        : contact[field.key]}
-                      onSave={v => updateContact(id, { [field.key]: v })}
+                      value={contact[field.id] || ''}
+                      onSave={v => updateContact(id, { [field.id]: v })}
                     />
                   </div>
                 ))}
 
-                {/* Custom columns */}
+                {/* Custom columns — synced from CRM table config */}
                 {customCols.map(col => (
                   <div key={col.id}>
                     <p className="text-[10px] text-muted-foreground mb-0.5">{col.label}</p>
@@ -246,6 +240,11 @@ export default function ContactDetail() {
                     />
                   </div>
                 ))}
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Fecha de creación</p>
+                  <p className="text-sm text-muted-foreground">{formatRelative(contact.created_at)}</p>
+                </div>
               </div>
             </div>
           </div>
