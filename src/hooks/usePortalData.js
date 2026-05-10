@@ -17,7 +17,7 @@ export function usePortalData(contactId) {
   useEffect(() => { convRef.current = conversation }, [conversation])
 
   useEffect(() => {
-    if (!contactId) return
+    if (!contactId) { setLoading(false); return }
     const load = async () => {
       setLoading(true)
       try {

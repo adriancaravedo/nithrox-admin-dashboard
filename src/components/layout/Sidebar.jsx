@@ -75,6 +75,7 @@ export default function Sidebar() {
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   const unreadCount = notifications?.filter(n => !n.read).length || 0
+  const unreadMessages = useStore(s => s.messages.reduce((sum, m) => sum + (m.unread || 0), 0))
   const currentBiz = BUSINESSES?.find(b => b.id === currentBusiness) || { label: 'Nithrox', icon: '⚡' }
 
   const handleLogout = async () => {
@@ -166,10 +167,13 @@ export default function Sidebar() {
               {!isCollapsed && to === '/notifications' && unreadCount > 0 && (
                 <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
               )}
-              {!isCollapsed && to === '/messages' && (
-                <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">3</span>
+              {!isCollapsed && to === '/messages' && unreadMessages > 0 && (
+                <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{unreadMessages}</span>
               )}
               {isCollapsed && to === '/notifications' && unreadCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-destructive" />
+              )}
+              {isCollapsed && to === '/messages' && unreadMessages > 0 && (
                 <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-destructive" />
               )}
             </NavLink>
