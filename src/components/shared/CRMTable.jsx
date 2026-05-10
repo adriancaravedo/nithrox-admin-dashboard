@@ -55,11 +55,6 @@ function ColHeader({ col, onResize, onRename, onDelete, onEdit }) {
           </div>
         )}
 
-        {/* Type icon */}
-        {typeInfo && !col.fixed && (
-          <span className="text-[10px] opacity-50 shrink-0">{typeInfo.icon}</span>
-        )}
-
         {renaming ? (
           <input value={label} onChange={e => setLabel(e.target.value)} autoFocus
             onBlur={commitRename}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../../../stores/useStore'
-import { LEAD_STATUSES, DEAL_STAGES, INDUSTRIES } from '../../../lib/utils'
+import { LEAD_STATUSES, DEAL_STAGES, INDUSTRIES, LIFECYCLE_STAGES } from '../../../lib/utils'
 import { loadState } from '../../../lib/persist'
 import { TypedInput, PhoneInput } from '../../../components/shared/ColFields'
 import { validateField } from '../../../lib/columnTypes'
@@ -185,6 +185,11 @@ export function AddContactDialog({ open, onClose }) {
           <input value={f.preferred_channels} onChange={e => set('preferred_channels', e.target.value)} placeholder="Email, WhatsApp..."
             className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-background" />
         </Field>
+
+        <Field label="Temas">
+          <input value={f.topics} onChange={e => set('topics', e.target.value)} placeholder="Diseño web, E-commerce..."
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-background" />
+        </Field>
       </div>
 
       {/* Custom columns */}
@@ -216,7 +221,8 @@ export function AddCompanyDialog({ open, onClose }) {
   const { addCompany, contacts } = useStore()
   const [f, setF] = useState({
     name: '', domain: '', industry: '', city: '', country: 'Perú',
-    ruc: '', phone: '', contact_id: '', new_contact_name: '', custom: {}
+    ruc: '', phone: '', owner: '', lifecycle: 'Lead', lead_status: 'New',
+    contact_id: '', new_contact_name: '', custom: {}
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -244,7 +250,7 @@ export function AddCompanyDialog({ open, onClose }) {
       const result = await addCompany(f)
       if (!result) throw new Error('No se pudo crear la empresa')
       toast.success(`Empresa "${f.name}" creada`)
-      setF({ name: '', domain: '', industry: '', city: '', country: 'Perú', ruc: '', phone: '', contact_id: '', new_contact_name: '', custom: {} })
+      setF({ name: '', domain: '', industry: '', city: '', country: 'Perú', ruc: '', phone: '', owner: '', lifecycle: 'Lead', lead_status: 'New', contact_id: '', new_contact_name: '', custom: {} })
       setErrors({})
       onClose()
     } catch (err) {
@@ -292,6 +298,22 @@ export function AddCompanyDialog({ open, onClose }) {
         <Field label="País">
           <input value={f.country} onChange={e => set('country', e.target.value)}
             className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-background" />
+        </Field>
+        <Field label="Owner">
+          <input value={f.owner} onChange={e => set('owner', e.target.value)} placeholder="Nombre del responsable..."
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-background" />
+        </Field>
+        <Field label="Lifecycle">
+          <select value={f.lifecycle} onChange={e => set('lifecycle', e.target.value)}
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-background">
+            {LIFECYCLE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </Field>
+        <Field label="Lead Status">
+          <select value={f.lead_status} onChange={e => set('lead_status', e.target.value)}
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-background">
+            {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </Field>
       </div>
 

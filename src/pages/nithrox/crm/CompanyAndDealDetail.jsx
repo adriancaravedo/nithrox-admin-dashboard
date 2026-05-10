@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
-import { formatRelative, formatDate, getInitials } from '../../../lib/utils'
+import { formatRelative, formatDate, getInitials, COMPANY_FIELD_DEFS } from '../../../lib/utils'
+import { loadState } from '../../../lib/persist'
+import { COL_DEFS_KEY_COMPANIES } from '../../../lib/columnTypes'
+import { COMPANIES_DEFAULT_COLS } from './CompaniesTab'
 import Topbar from '../../../components/layout/Topbar'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
-import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
+import { InlineField } from '../../../components/shared/ColFields'
 import {
   Plus, ExternalLink, Mail, Phone,
   ListTodo, Calendar,
@@ -30,8 +33,11 @@ export function CompanyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { companies, contacts, deals, contracts: storeContracts, updateCompany } = useStore()
-  const [editField, setEditField] = useState(null)
-  const [editValue, setEditValue] = useState('')
+
+  // Dynamic field list from CRM table config
+  const activeCols = loadState(COL_DEFS_KEY_COMPANIES, COMPANIES_DEFAULT_COLS)
+  const companyDetailFields = COMPANY_FIELD_DEFS
+  const companyCustomCols = activeCols.filter(c => c.id?.startsWith('col_'))
 
   const company = companies.find(c => c.id === id)
   if (!company) return (
@@ -45,18 +51,6 @@ export function CompanyDetail() {
   const companyDeals = deals.filter(d => d.company_id === id)
   const companyContracts = (storeContracts || []).filter(c => c.company_id === id)
 
-  const startEdit = (field, value) => { setEditField(field); setEditValue(value || '') }
-  const saveEdit = () => { if (editField) updateCompany(id, { [editField]: editValue }); setEditField(null) }
-
-  const INFO_FIELDS = [
-    { key: 'owner', label: 'Company owner' },
-    { key: 'city', label: 'Ciudad' },
-    { key: 'lifecycle', label: 'Lifecycle Stage' },
-    { key: 'lead_status', label: 'Lead Status' },
-    { key: 'industry', label: 'Industria' },
-    { key: 'ruc', label: 'RUC' },
-    { key: 'last_activity', label: 'Último contacto' },
-  ]
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -91,24 +85,30 @@ export function CompanyDetail() {
           <div>
             <h3 className="text-xs font-semibold mb-3">Key information</h3>
             <div className="space-y-3">
-              {INFO_FIELDS.map(field => (
-                <div key={field.key}>
+              {companyDetailFields.map(field => (
+                <div key={field.id}>
                   <p className="text-[10px] text-muted-foreground mb-0.5">{field.label}</p>
-                  {editField === field.key ? (
-                    <div className="flex gap-1">
-                      <Input value={editValue} onChange={e => setEditValue(e.target.value)} className="h-7 text-xs flex-1"
-                        autoFocus onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditField(null) }} />
-                      <button onClick={saveEdit} className="text-green-600 px-1"><Check className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => setEditField(null)} className="text-muted-foreground px-1"><X className="w-3.5 h-3.5" /></button>
-                    </div>
-                  ) : (
-                    <button className="text-sm text-left w-full hover:text-primary transition-colors"
-                      onClick={() => startEdit(field.key, company[field.key])}>
-                      {company[field.key] || <span className="text-muted-foreground">—</span>}
-                    </button>
-                  )}
+                  <InlineField
+                    col={field}
+                    value={company[field.id] || ''}
+                    onSave={v => updateCompany(id, { [field.id]: v })}
+                  />
                 </div>
               ))}
+              {companyCustomCols.map(col => (
+                <div key={col.id}>
+                  <p className="text-[10px] text-muted-foreground mb-0.5">{col.label}</p>
+                  <InlineField
+                    col={col}
+                    value={company.custom?.[col.id] || ''}
+                    onSave={v => updateCompany(id, { custom: { ...company.custom, [col.id]: v } })}
+                  />
+                </div>
+              ))}
+              <div>
+                <p className="text-[10px] text-muted-foreground mb-0.5">Creado</p>
+                <p className="text-sm text-muted-foreground">{formatRelative(company.created_at)}</p>
+              </div>
             </div>
           </div>
         </div>
