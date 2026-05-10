@@ -20,17 +20,22 @@ export function usePortalData(contactId) {
     if (!contactId) return
     const load = async () => {
       setLoading(true)
-      const [{ data: proj }, { data: conv }, { data: ctr }, { data: prop }] = await Promise.all([
-        db.projects.forClient(contactId),
-        db.conversations.forClient(contactId),
-        db.contracts.forClient(contactId),
-        db.proposals.forClient(contactId),
-      ])
-      setProject(proj || null)
-      setConversation(conv || null)
-      setContracts(ctr || [])
-      setProposals(prop || [])
-      setLoading(false)
+      try {
+        const [{ data: proj }, { data: conv }, { data: ctr }, { data: prop }] = await Promise.all([
+          db.projects.forClient(contactId),
+          db.conversations.forClient(contactId),
+          db.contracts.forClient(contactId),
+          db.proposals.forClient(contactId),
+        ])
+        setProject(proj || null)
+        setConversation(conv || null)
+        setContracts(ctr || [])
+        setProposals(prop || [])
+      } catch (err) {
+        console.error('Portal load error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [contactId])
