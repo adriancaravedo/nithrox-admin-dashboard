@@ -204,8 +204,19 @@ export const useStore = create((set, get) => ({
   },
 
   addProject: async (project) => {
-    const { data } = await db.projects.create({ ...project, phases: project.phases || {} })
-    if (data) set(s => ({ projects: [...s.projects, data] }))
+    const { data } = await db.projects.create({
+      name: project.name,
+      framework: project.framework || null,
+      value: project.value || 0,
+      currency: project.currency || 'USD',
+      company_id: project.company_id || null,
+      contact_id: project.contact_id || null,
+      server_id: project.server_id || null,
+      phase: 'kickoff',
+      phases: project.phases || {},
+      tags: project.tags || [],
+    })
+    if (data) set(s => ({ projects: [...s.projects, { ...data, company: project.company || '', contact: project.contact || '' }] }))
     return data
   },
 
