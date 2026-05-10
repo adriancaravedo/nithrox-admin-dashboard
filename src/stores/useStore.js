@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { db } from '../lib/db'
 import { BUSINESSES } from '../lib/utils'
 
+// Map custom_fields from DB → custom in the store (so components use contact.custom consistently)
+const withCustom = (obj) => obj ? { ...obj, custom: obj.custom_fields || {} } : null
+
 // Shape a conversation row + its messages into the format MessagesPage expects
 function shapeConversation(conv) {
   const msgs = (conv.messages || []).map(m => ({
@@ -39,8 +42,8 @@ export const useStore = create((set, get) => ({
       db.deals.list(),
     ])
     set({
-      contacts: contacts || [],
-      companies: companies || [],
+      contacts: (contacts || []).map(withCustom),
+      companies: (companies || []).map(withCustom),
       deals: deals || [],
     })
   },
@@ -78,16 +81,21 @@ export const useStore = create((set, get) => ({
       topics: contact.topics || null,
       notes: contact.notes || null,
       avatar_color,
+      custom_fields: contact.custom || {},
     }
 
     const { data } = await db.contacts.create(payload)
-    if (data) set(s => ({ contacts: [...s.contacts, data] }))
-    return data
+    const shaped = withCustom(data)
+    if (shaped) set(s => ({ contacts: [...s.contacts, shaped] }))
+    return shaped
   },
 
   updateContact: async (id, updates) => {
-    const { data } = await db.contacts.update(id, updates)
-    if (data) set(s => ({ contacts: s.contacts.map(c => c.id === id ? data : c) }))
+    const dbUpdates = { ...updates }
+    if ('custom' in dbUpdates) { dbUpdates.custom_fields = dbUpdates.custom; delete dbUpdates.custom }
+    const { data } = await db.contacts.update(id, dbUpdates)
+    const shaped = withCustom(data)
+    if (shaped) set(s => ({ contacts: s.contacts.map(c => c.id === id ? shaped : c) }))
   },
 
   deleteContact: async (id) => {
@@ -111,14 +119,16 @@ export const useStore = create((set, get) => ({
       country: company.country || 'Perú',
       ruc: company.ruc || null,
       phone: company.phone || null,
-      owner: 'Adrian Caravedo',
+      owner: company.owner || 'Adrian Caravedo',
       lifecycle: company.lifecycle || 'Lead',
       lead_status: company.lead_status || 'New',
       avatar_color,
+      custom_fields: company.custom || {},
     }
 
-    const { data: co } = await db.companies.create(payload)
-    if (!co) return
+    const { data: rawCo } = await db.companies.create(payload)
+    if (!rawCo) return
+    const co = withCustom(rawCo)
 
     set(s => ({ companies: [...s.companies, co] }))
 
@@ -136,8 +146,11 @@ export const useStore = create((set, get) => ({
   },
 
   updateCompany: async (id, updates) => {
-    const { data } = await db.companies.update(id, updates)
-    if (data) set(s => ({ companies: s.companies.map(c => c.id === id ? data : c) }))
+    const dbUpdates = { ...updates }
+    if ('custom' in dbUpdates) { dbUpdates.custom_fields = dbUpdates.custom; delete dbUpdates.custom }
+    const { data } = await db.companies.update(id, dbUpdates)
+    const shaped = withCustom(data)
+    if (shaped) set(s => ({ companies: s.companies.map(c => c.id === id ? shaped : c) }))
   },
 
   deleteCompany: async (id) => {

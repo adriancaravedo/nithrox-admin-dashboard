@@ -153,7 +153,7 @@ export default function CRMTable({
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
-  const [cols, setCols] = useState(() => loadState(`${storageKey}_cols`, defaultCols))
+  const [cols, setCols] = useState(() => loadState(storageKey, defaultCols))
   const [rowOrder, setRowOrder] = useState(() => {
     const saved = loadState(`${storageKey}_rows`, null)
     const ids = rows.map(r => r.id)
@@ -182,7 +182,7 @@ export default function CRMTable({
 
   // Persist cols
   useEffect(() => {
-    saveState(`${storageKey}_cols`, cols)
+    saveState(storageKey, cols)
     onColsChange?.(cols)
   }, [cols])
 

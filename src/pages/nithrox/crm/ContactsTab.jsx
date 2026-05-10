@@ -78,9 +78,17 @@ export default function ContactsTab({ showAddSection, onCloseAddSection }) {
         ? <button onClick={() => navigate(`/clients/companies/${company.id}`)} className="text-primary hover:underline text-xs truncate">{company.name}</button>
         : <span className="text-muted-foreground text-xs">—</span>
       case 'created_at': return <span className="text-xs text-muted-foreground">{formatRelative(contact.created_at)}</span>
-      default:
-        // custom column
-        return <span className="text-xs text-muted-foreground truncate">{contact.custom?.[colId] || '—'}</span>
+      default: {
+        // custom column — render based on type from saved col config
+        const savedCols = loadState(COL_DEFS_KEY_CONTACTS, [])
+        const colDef = savedCols.find(c => c.id === colId)
+        const val = contact.custom?.[colId]
+        if (!val && val !== false && val !== 'false') return <span className="text-xs text-muted-foreground">—</span>
+        if (colDef?.type === 'checkbox') return <span className={`text-xs font-medium ${val === 'true' ? 'text-green-600' : 'text-muted-foreground'}`}>{val === 'true' ? '✓ Sí' : '✗ No'}</span>
+        if (colDef?.type === 'rating') { const n = Number(val) || 0; return <span className="text-amber-400 text-sm">{'★'.repeat(n)}</span> }
+        if (colDef?.type === 'currency') return <span className="text-xs">${Number(val).toLocaleString()}</span>
+        return <span className="text-xs text-muted-foreground truncate block max-w-full">{String(val)}</span>
+      }
     }
   }
 
