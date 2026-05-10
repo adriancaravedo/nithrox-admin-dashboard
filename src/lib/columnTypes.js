@@ -1,12 +1,16 @@
 // ── Column types ─────────────────────────────────────────────
 export const COL_TYPES = [
-  { id: 'text',     label: 'Texto',           icon: '📝' },
-  { id: 'email',    label: 'Email',           icon: '📧' },
-  { id: 'phone',    label: 'Teléfono',        icon: '📞' },
-  { id: 'date',     label: 'Fecha',           icon: '📅' },
-  { id: 'select',   label: 'Opción múltiple', icon: '🔽' },
-  { id: 'number',   label: 'Número',          icon: '🔢' },
-  { id: 'url',      label: 'URL',             icon: '🔗' },
+  { id: 'text',      label: 'Texto',          icon: '📝' },
+  { id: 'textarea',  label: 'Texto largo',    icon: '📄' },
+  { id: 'email',     label: 'Email',          icon: '📧' },
+  { id: 'phone',     label: 'Teléfono',       icon: '📞' },
+  { id: 'number',    label: 'Número',         icon: '🔢' },
+  { id: 'currency',  label: 'Moneda',         icon: '💰' },
+  { id: 'date',      label: 'Fecha',          icon: '📅' },
+  { id: 'select',    label: 'Lista opciones', icon: '🔽' },
+  { id: 'checkbox',  label: 'Sí / No',        icon: '☑️' },
+  { id: 'rating',    label: 'Puntuación',     icon: '⭐' },
+  { id: 'url',       label: 'URL / Link',     icon: '🔗' },
 ]
 
 // ── Country codes ─────────────────────────────────────────────
@@ -58,7 +62,11 @@ export function validateField(type, value) {
       try { new URL(value.startsWith('http') ? value : `https://${value}`); return null }
       catch { return 'URL inválida' }
     case 'number':
+    case 'currency':
       if (isNaN(Number(value))) return 'Debe ser un número'
+      return null
+    case 'rating':
+      if (![1,2,3,4,5].includes(Number(value))) return 'Valor entre 1 y 5'
       return null
     default:
       return null

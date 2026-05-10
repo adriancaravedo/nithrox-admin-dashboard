@@ -28,9 +28,14 @@ create table if not exists companies (
   lifecycle     text default 'Lead',
   lead_status   text default 'New',
   avatar_color  text,
+  custom_fields jsonb default '{}',
   created_at    timestamptz default now(),
   last_activity timestamptz default now()
 );
+
+-- Run these if tables already exist:
+-- alter table contacts add column if not exists custom_fields jsonb default '{}';
+-- alter table companies add column if not exists custom_fields jsonb default '{}';
 alter table companies enable row level security;
 
 -- ── Contacts ─────────────────────────────────────────────────
@@ -46,6 +51,7 @@ create table if not exists contacts (
   topics              text,
   notes               text,
   avatar_color        text,
+  custom_fields       jsonb default '{}',
   created_at          timestamptz default now(),
   last_activity       timestamptz default now()
 );

@@ -51,9 +51,19 @@ export default function CompaniesTab({ showAddSection, onCloseAddSection }) {
       )
       case 'last_activity':
       case 'created_at': return <span className="text-xs text-muted-foreground">{formatRelative(company[colId])}</span>
-      default:
-        if (colId.startsWith('col_')) return <span className="text-xs text-muted-foreground truncate">{company.custom?.[colId] || '—'}</span>
+      default: {
+        if (colId.startsWith('col_')) {
+          const savedCols = loadState(COL_DEFS_KEY_COMPANIES, [])
+          const colDef = savedCols.find(c => c.id === colId)
+          const val = company.custom?.[colId]
+          if (!val && val !== false && val !== 'false') return <span className="text-xs text-muted-foreground">—</span>
+          if (colDef?.type === 'checkbox') return <span className={`text-xs font-medium ${val === 'true' ? 'text-green-600' : 'text-muted-foreground'}`}>{val === 'true' ? '✓ Sí' : '✗ No'}</span>
+          if (colDef?.type === 'rating') { const n = Number(val) || 0; return <span className="text-amber-400 text-sm">{'★'.repeat(n)}</span> }
+          if (colDef?.type === 'currency') return <span className="text-xs">${Number(val).toLocaleString()}</span>
+          return <span className="text-xs text-muted-foreground truncate block max-w-full">{String(val)}</span>
+        }
         return <span className="text-xs text-muted-foreground truncate">{company[colId] || '—'}</span>
+      }
     }
   }
 

@@ -98,6 +98,11 @@ export function TypedInput({ col, value, onChange, onError, className = '' }) {
     )
   }
 
+  if (col.type === 'textarea') {
+    return <textarea value={value || ''} onChange={e => handleChange(e.target.value)} rows={3}
+      placeholder={col.label} className={`${baseClass} resize-none`} />
+  }
+
   if (col.type === 'date') {
     return <input type="date" value={value || ''} onChange={e => handleChange(e.target.value)} className={baseClass} />
   }
@@ -107,6 +112,46 @@ export function TypedInput({ col, value, onChange, onError, className = '' }) {
       <div>
         <input type="number" value={value || ''} onChange={e => handleChange(e.target.value)} className={baseClass} />
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      </div>
+    )
+  }
+
+  if (col.type === 'currency') {
+    return (
+      <div>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+          <input type="number" value={value || ''} onChange={e => handleChange(e.target.value)}
+            placeholder="0.00" className={`${baseClass} pl-7`} />
+        </div>
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      </div>
+    )
+  }
+
+  if (col.type === 'checkbox') {
+    const checked = value === 'true' || value === true
+    return (
+      <button type="button" onClick={() => handleChange(checked ? 'false' : 'true')}
+        className={`flex items-center gap-2 text-sm ${checked ? 'text-green-600' : 'text-muted-foreground'}`}>
+        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${checked ? 'bg-green-600 border-green-600' : 'border-border'}`}>
+          {checked && <Check className="w-2.5 h-2.5 text-white" />}
+        </div>
+        {checked ? 'Sí' : 'No'}
+      </button>
+    )
+  }
+
+  if (col.type === 'rating') {
+    const current = Number(value) || 0
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} type="button" onClick={() => handleChange(String(n))}
+            className={`text-lg transition-colors ${n <= current ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-300'}`}>
+            ★
+          </button>
+        ))}
       </div>
     )
   }
@@ -255,6 +300,26 @@ export function ColDefEditor({ open, onClose, onSave, initial = null }) {
               📞 Incluye selector de código de área por país
             </div>
           )}
+          {type === 'checkbox' && (
+            <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              ☑️ Campo booleano — Sí / No. Ej: Activo, Verificado, Cliente recurrente
+            </div>
+          )}
+          {type === 'rating' && (
+            <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              ⭐ Puntuación del 1 al 5. Ej: Prioridad, Calidad del lead, Satisfacción
+            </div>
+          )}
+          {type === 'currency' && (
+            <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              💰 Valor monetario. Ej: Presupuesto, Facturación anual, Ticket promedio
+            </div>
+          )}
+          {type === 'textarea' && (
+            <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              📄 Texto largo. Ej: Descripción, Notas del cliente, Observaciones
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 px-5 pb-5">
@@ -285,11 +350,50 @@ export function InlineField({ col, value, onSave }) {
   const cancel = () => { setDraft(value || ''); setEditing(false); setError(null) }
 
   const displayValue = () => {
+    if (col.type === 'checkbox') {
+      const checked = value === 'true' || value === true
+      return <span className={checked ? 'text-green-600 font-medium' : 'text-muted-foreground'}>{checked ? '✓ Sí' : '✗ No'}</span>
+    }
+    if (col.type === 'rating') {
+      const n = Number(value) || 0
+      if (!n) return <span className="text-muted-foreground">—</span>
+      return <span className="text-amber-400">{'★'.repeat(n)}<span className="text-muted-foreground/30">{'★'.repeat(5 - n)}</span></span>
+    }
     if (!value) return <span className="text-muted-foreground">—</span>
-    if (col.type === 'url') return <a href={value} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{value}</a>
+    if (col.type === 'url') return <a href={value} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate block max-w-full">{value}</a>
     if (col.type === 'email') return <a href={`mailto:${value}`} className="text-primary hover:underline">{value}</a>
     if (col.type === 'phone') return <a href={`tel:${value}`} className="text-primary hover:underline">{value}</a>
+    if (col.type === 'currency') return <span>${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+    if (col.type === 'textarea') return <span className="text-sm leading-relaxed whitespace-pre-wrap">{value}</span>
     return <span>{value}</span>
+  }
+
+  // Checkbox and rating toggle directly without entering edit mode
+  if (col.type === 'checkbox') {
+    const checked = value === 'true' || value === true
+    return (
+      <button type="button" onClick={() => onSave(checked ? 'false' : 'true')}
+        className="flex items-center gap-2 text-sm">
+        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${checked ? 'bg-green-600 border-green-600' : 'border-border hover:border-foreground/40'}`}>
+          {checked && <Check className="w-2.5 h-2.5 text-white" />}
+        </div>
+        <span className={checked ? 'text-green-600 font-medium' : 'text-muted-foreground'}>{checked ? 'Sí' : 'No'}</span>
+      </button>
+    )
+  }
+
+  if (col.type === 'rating') {
+    const current = Number(value) || 0
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} type="button" onClick={() => onSave(String(n))}
+            className={`text-lg transition-colors leading-none ${n <= current ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-300'}`}>
+            ★
+          </button>
+        ))}
+      </div>
+    )
   }
 
   if (editing) {
