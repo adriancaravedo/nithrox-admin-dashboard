@@ -45,18 +45,16 @@ export const db = {
     create: (data) => supabase.from('conversations').insert(data).select().single(),
     list: () => supabase
       .from('conversations')
-      .select(`*, contacts(id,name,avatar_color), companies(id,name),
-        messages(id,from_role,text,created_at,read_at,deleted_at,attachment_url,attachment_name,attachment_type,is_voice_note,duration_sec)`)
+      .select('*, contacts(id,name,avatar_color), companies(id,name), messages(*)')
       .order('last_at', { ascending: false }),
     get: (id) => supabase
       .from('conversations')
-      .select(`*, contacts(*), companies(*),
-        messages(id,from_role,sender_id,text,created_at,read_at,deleted_at,attachment_url,attachment_name,attachment_type,is_voice_note,duration_sec)`)
+      .select('*, contacts(*), companies(*), messages(*)')
       .eq('id', id)
       .single(),
     forClient: (contactId) => supabase
       .from('conversations')
-      .select(`*, messages(id,from_role,text,created_at,read_at,deleted_at,attachment_url,attachment_name,attachment_type,is_voice_note,duration_sec)`)
+      .select('*, messages(*)')
       .eq('contact_id', contactId)
       .single(),
     update: (id, data) => supabase.from('conversations').update(data).eq('id', id).select().single(),
