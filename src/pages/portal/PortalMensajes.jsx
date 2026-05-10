@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Paperclip, Mic, Square, Play, Pause, Volume2, Download, Check, CheckCheck, Trash2, File as FileIcon } from 'lucide-react'
+import { Send, Paperclip, Mic, Square, Play, Pause, Volume2, Download, Check, CheckCheck, File as FileIcon } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { usePortalData } from '../../hooks/usePortalData'
 import { toast } from 'sonner'
@@ -53,7 +53,6 @@ function AudioPlayer({ url, duration, invert }) {
 // ── Message ───────────────────────────────────────────────────
 function Message({ msg, profileInitial }) {
   const isClient = msg.from_role === 'client'
-  const isDeleted = !!msg.deleted_at
   const isVoice = msg.is_voice_note
   const isImage = msg.attachment_type?.startsWith('image/')
   const hasFile = !!msg.attachment_url && !isVoice
@@ -64,11 +63,7 @@ function Message({ msg, profileInitial }) {
         {isClient ? (profileInitial || 'C') : 'AC'}
       </div>
       <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
-        {isDeleted ? (
-          <div className="px-3.5 py-2 rounded-2xl bg-zinc-100 border border-zinc-200 text-zinc-400 italic text-xs flex items-center gap-1.5">
-            <Trash2 className="w-3 h-3" /> Mensaje eliminado
-          </div>
-        ) : isVoice ? (
+        {isVoice ? (
           <div className={`px-3.5 py-2.5 rounded-2xl ${isClient ? 'bg-zinc-900 text-white rounded-tr-sm' : 'bg-white border border-zinc-200 rounded-tl-sm'}`}>
             <div className="flex items-center gap-1.5 mb-1">
               <Volume2 className="w-3 h-3 opacity-60" />
@@ -146,7 +141,7 @@ export default function PortalMensajes() {
   const recTimerRef = useRef()
   const adminOnline = localStorage.getItem('ntx_admin_online') !== '0'
 
-  const msgs = conversation?.messages || []
+  const msgs = (conversation?.messages || []).filter(m => !m.deleted_at)
   const allowAttachments = conversation?.allow_attachments !== false
   const allowVoice = conversation?.allow_voice_notes || false
 
