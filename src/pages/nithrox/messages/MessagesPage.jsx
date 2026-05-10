@@ -12,7 +12,7 @@ import {
   Send, Paperclip, Search, Plus, X, Mic, Square,
   Calendar, UserCircle, FolderKanban, FileText, Phone,
   Trash2, Settings2, Play, Pause, Download, Check, CheckCheck,
-  Volume2, Image as ImageIcon, File as FileIcon, Toggle3Right
+  Volume2, File as FileIcon
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────
