@@ -377,3 +377,44 @@ create policy "admin_read_all_profiles" on profiles for select using (is_admin()
 alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table notifications;
 alter publication supabase_realtime add table conversations;
+
+-- ============================================================
+-- Messages v2 — Run these ALTER TABLE statements if tables exist
+-- ============================================================
+alter table messages add column if not exists read_at        timestamptz;
+alter table messages add column if not exists deleted_at     timestamptz;
+alter table messages add column if not exists deleted_by     uuid references auth.users(id) on delete set null;
+alter table messages add column if not exists attachment_url  text;
+alter table messages add column if not exists attachment_name text;
+alter table messages add column if not exists attachment_type text;
+alter table messages add column if not exists is_voice_note  boolean default false;
+alter table messages add column if not exists duration_sec   numeric;
+
+-- Conversations v2
+alter table conversations add column if not exists allow_attachments  boolean default true;
+alter table conversations add column if not exists allow_voice_notes  boolean default false;
+
+-- Allow clients to mark admin messages as read (update read_at only)
+drop policy if exists "client_mark_read" on messages;
+create policy "client_mark_read" on messages for update
+  using (
+    conversation_id in (select id from conversations where contact_id = my_contact_id())
+    and from_role = 'admin'
+  )
+  with check (true);
+
+-- Allow admins to soft-delete any message (already covered by admin_all_messages)
+-- Allow admins to update conversation settings (already covered by admin_all_conversations)
+
+-- ============================================================
+-- Storage — message-attachments bucket
+-- Run in Supabase Dashboard → Storage → New Bucket: "message-attachments" (public)
+-- Then run these policies in SQL Editor:
+-- ============================================================
+-- insert into storage.buckets (id, name, public) values ('message-attachments', 'message-attachments', true) on conflict do nothing;
+-- drop policy if exists "auth_upload_attachments" on storage.objects;
+-- create policy "auth_upload_attachments" on storage.objects for insert to authenticated with check (bucket_id = 'message-attachments');
+-- drop policy if exists "public_read_attachments" on storage.objects;
+-- create policy "public_read_attachments" on storage.objects for select using (bucket_id = 'message-attachments');
+-- drop policy if exists "admin_delete_attachments" on storage.objects;
+-- create policy "admin_delete_attachments" on storage.objects for delete to authenticated using (bucket_id = 'message-attachments');

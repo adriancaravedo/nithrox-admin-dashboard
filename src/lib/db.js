@@ -45,18 +45,21 @@ export const db = {
     create: (data) => supabase.from('conversations').insert(data).select().single(),
     list: () => supabase
       .from('conversations')
-      .select('*, contacts(id,name,avatar_color), companies(id,name), messages(id,from_role,text,created_at)')
+      .select(`*, contacts(id,name,avatar_color), companies(id,name),
+        messages(id,from_role,text,created_at,read_at,deleted_at,attachment_url,attachment_name,attachment_type,is_voice_note,duration_sec)`)
       .order('last_at', { ascending: false }),
     get: (id) => supabase
       .from('conversations')
-      .select('*, contacts(*), companies(*), messages(id,from_role,sender_id,text,created_at)')
+      .select(`*, contacts(*), companies(*),
+        messages(id,from_role,sender_id,text,created_at,read_at,deleted_at,attachment_url,attachment_name,attachment_type,is_voice_note,duration_sec)`)
       .eq('id', id)
       .single(),
     forClient: (contactId) => supabase
       .from('conversations')
-      .select('*, messages(id,from_role,text,created_at)')
+      .select(`*, messages(id,from_role,text,created_at,read_at,deleted_at,attachment_url,attachment_name,attachment_type,is_voice_note,duration_sec)`)
       .eq('contact_id', contactId)
       .single(),
+    update: (id, data) => supabase.from('conversations').update(data).eq('id', id).select().single(),
     updateLastMessage: (id, text) => supabase
       .from('conversations')
       .update({ last_message: text, last_at: new Date().toISOString() })
@@ -72,6 +75,22 @@ export const db = {
       .eq('conversation_id', convId)
       .order('created_at'),
     send: (data) => supabase.from('messages').insert(data).select().single(),
+    softDelete: (id, userId) => supabase
+      .from('messages')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+      .eq('id', id),
+    markClientRead: (convId) => supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', convId)
+      .eq('from_role', 'client')
+      .is('read_at', null),
+    markAdminRead: (convId) => supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', convId)
+      .eq('from_role', 'admin')
+      .is('read_at', null),
   },
 
   // ── Contracts ──────────────────────────────────────────────
