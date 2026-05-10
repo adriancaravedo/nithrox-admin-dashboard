@@ -1,22 +1,32 @@
 import { create } from 'zustand'
 import { db } from '../lib/db'
+import { supabase } from '../lib/supabase'
 import { BUSINESSES } from '../lib/utils'
 
 // Map custom_fields from DB → custom in the store (so components use contact.custom consistently)
 const withCustom = (obj) => obj ? { ...obj, custom: obj.custom_fields || {} } : null
 
-// Shape a conversation row + its messages into the format MessagesPage expects
-function shapeConversation(conv) {
-  const msgs = (conv.messages || []).map(m => ({
+function shapeMsg(m) {
+  return {
     id: m.id,
     from: m.from_role,
     text: m.text,
     at: m.created_at,
-  }))
-  const last = msgs[msgs.length - 1]
+    read_at: m.read_at || null,
+    deleted_at: m.deleted_at || null,
+    attachment_url: m.attachment_url || null,
+    attachment_name: m.attachment_name || null,
+    attachment_type: m.attachment_type || null,
+    is_voice_note: m.is_voice_note || false,
+    duration_sec: m.duration_sec || 0,
+  }
+}
+
+function shapeConversation(conv) {
   return {
     id: conv.id,
     company_id: conv.company_id,
+    contact_id: conv.contact_id,
     company: conv.companies?.name || '',
     contact: conv.contacts?.name || '',
     avatar_color: conv.contacts?.avatar_color || '#64748b',
@@ -25,7 +35,9 @@ function shapeConversation(conv) {
     unread: conv.unread_admin || 0,
     last_message: conv.last_message || '',
     last_at: conv.last_at,
-    messages: msgs,
+    allow_attachments: conv.allow_attachments !== false,
+    allow_voice_notes: conv.allow_voice_notes || false,
+    messages: (conv.messages || []).map(shapeMsg),
   }
 }
 
@@ -249,12 +261,13 @@ export const useStore = create((set, get) => ({
     if (data) set({ messages: data.map(shapeConversation) })
   },
 
-  sendMessage: async (conversationId, text, senderId, fromRole = 'admin') => {
+  sendMessage: async (conversationId, text, senderId, fromRole = 'admin', extra = {}) => {
     const { data: msg } = await db.messages.send({
       conversation_id: conversationId,
       sender_id: senderId,
       from_role: fromRole,
       text,
+      ...extra,
     })
     if (!msg) return
 
@@ -267,7 +280,7 @@ export const useStore = create((set, get) => ({
       messages: s.messages.map(m => m.id === conversationId
         ? {
             ...m,
-            messages: [...m.messages, { id: msg.id, from: fromRole, text, at: msg.created_at }],
+            messages: [...m.messages, shapeMsg(msg)],
             last_message: text,
             last_at: msg.created_at,
             unread: fromRole === 'admin' ? 0 : m.unread,
@@ -298,19 +311,45 @@ export const useStore = create((set, get) => ({
     return shaped
   },
 
-  // Called by Realtime when a new message arrives
   appendRealtimeMessage: (conversationId, msg) => {
     set(s => ({
       messages: s.messages.map(m => m.id === conversationId
         ? {
             ...m,
-            messages: [...m.messages, { id: msg.id, from: msg.from_role, text: msg.text, at: msg.created_at }],
+            messages: [...m.messages, shapeMsg(msg)],
             last_message: msg.text,
             last_at: msg.created_at,
             unread: msg.from_role === 'client' ? (m.unread || 0) + 1 : m.unread,
           }
         : m
       ),
+    }))
+  },
+
+  updateMessageReadAt: (conversationId, msgId, readAt) => {
+    set(s => ({
+      messages: s.messages.map(m => m.id === conversationId
+        ? { ...m, messages: m.messages.map(msg => msg.id === msgId ? { ...msg, read_at: readAt } : msg) }
+        : m
+      ),
+    }))
+  },
+
+  deleteMessage: async (msgId, userId, conversationId) => {
+    await db.messages.softDelete(msgId, userId)
+    const now = new Date().toISOString()
+    set(s => ({
+      messages: s.messages.map(m => m.id === conversationId
+        ? { ...m, messages: m.messages.map(msg => msg.id === msgId ? { ...msg, deleted_at: now } : msg) }
+        : m
+      ),
+    }))
+  },
+
+  updateConversationSettings: async (convId, settings) => {
+    await db.conversations.update(convId, settings)
+    set(s => ({
+      messages: s.messages.map(m => m.id === convId ? { ...m, ...settings } : m),
     }))
   },
 
