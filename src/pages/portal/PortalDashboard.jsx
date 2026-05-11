@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { usePortalData } from '../../hooks/usePortalData'
 import { FolderKanban, CreditCard, MessageSquare, FileText, AlertCircle } from 'lucide-react'
@@ -13,10 +14,129 @@ function greet(name) {
   return `${gr}, ${name?.split(' ')[0] || 'Cliente'} 👋`
 }
 
+function OnboardingWizard({ contactId, onDone }) {
+  const [step, setStep] = useState(1)
+  const TOTAL = 4
+
+  function handleDone() {
+    localStorage.setItem('ntx_onboarded_' + contactId, '1')
+    onDone()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center px-6 py-10">
+      <div className="w-full max-w-lg flex flex-col items-center text-center">
+
+        {/* Step 1 — Bienvenida */}
+        {step === 1 && (
+          <div className="flex flex-col items-center gap-4">
+            <span className="text-6xl">👋</span>
+            <h1 className="text-2xl font-black text-zinc-900">¡Bienvenido al portal de clientes de Nithrox!</h1>
+            <p className="text-zinc-500 text-sm max-w-sm">
+              Este es tu espacio privado para seguir tu proyecto, comunicarte con el equipo y firmar documentos.
+            </p>
+            <button
+              onClick={() => setStep(2)}
+              className="mt-4 bg-zinc-900 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors"
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
+
+        {/* Step 2 — Así funciona */}
+        {step === 2 && (
+          <div className="flex flex-col items-center gap-4 w-full">
+            <h1 className="text-2xl font-black text-zinc-900">Así funciona el proceso</h1>
+            <div className="grid grid-cols-4 gap-3 w-full mt-2">
+              {[
+                { emoji: '🚀', label: 'Kick-off', desc: 'Definimos objetivos y alcance del proyecto.' },
+                { emoji: '🎨', label: 'Diseño', desc: 'Creamos la identidad visual y los prototipos.' },
+                { emoji: '💻', label: 'Desarrollo', desc: 'Construimos y programamos tu solución.' },
+                { emoji: '🌐', label: 'Publicación', desc: 'Lanzamos y entregamos todo listo.' },
+              ].map(ph => (
+                <div key={ph.label} className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3 flex flex-col items-center gap-1.5">
+                  <span className="text-2xl">{ph.emoji}</span>
+                  <p className="text-xs font-bold text-zinc-900">{ph.label}</p>
+                  <p className="text-[10px] text-zinc-500 leading-tight">{ph.desc}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setStep(3)}
+              className="mt-4 bg-zinc-900 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors"
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
+
+        {/* Step 3 — Tu portal */}
+        {step === 3 && (
+          <div className="flex flex-col items-center gap-4 w-full">
+            <h1 className="text-2xl font-black text-zinc-900">Todo lo que necesitas en un solo lugar</h1>
+            <div className="w-full mt-2 space-y-2">
+              {[
+                { icon: '📊', label: 'Dashboard', desc: 'Resumen de tu proyecto' },
+                { icon: '🗂️', label: 'Mi proyecto', desc: 'Fases y avance en tiempo real' },
+                { icon: '💬', label: 'Mensajes', desc: 'Comunicación directa con el equipo' },
+                { icon: '📄', label: 'Contratos', desc: 'Firma digital de documentos' },
+                { icon: '📅', label: 'Reuniones', desc: 'Agenda y videollamadas' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-3 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-left">
+                  <span className="text-xl shrink-0">{item.icon}</span>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">{item.label}</p>
+                    <p className="text-xs text-zinc-500">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setStep(4)}
+              className="mt-4 bg-zinc-900 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors"
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
+
+        {/* Step 4 — Listo */}
+        {step === 4 && (
+          <div className="flex flex-col items-center gap-4">
+            <span className="text-6xl">🎉</span>
+            <h1 className="text-2xl font-black text-zinc-900">¡Todo listo! Puedes empezar ahora.</h1>
+            <p className="text-zinc-500 text-sm max-w-sm">
+              Si tienes alguna duda, escríbenos por Mensajes. Estamos aquí para ayudarte.
+            </p>
+            <button
+              onClick={handleDone}
+              className="mt-4 bg-zinc-900 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-zinc-700 transition-colors"
+            >
+              Ir al dashboard
+            </button>
+          </div>
+        )}
+
+        {/* Progress dots */}
+        <div className="flex gap-2 mt-8">
+          {Array.from({ length: TOTAL }, (_, i) => (
+            <div
+              key={i}
+              className={`rounded-full transition-all duration-300 ${i + 1 === step ? 'w-4 h-2 bg-zinc-900' : 'w-2 h-2 bg-zinc-300'}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PortalDashboard() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const { project, contracts, loading } = usePortalData(profile?.contact_id)
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('ntx_onboarded_' + profile?.contact_id))
 
   if (loading) {
     return (
@@ -156,6 +276,8 @@ export default function PortalDashboard() {
           Mensaje →
         </button>
       </div>
+
+      {showOnboarding && <OnboardingWizard contactId={profile?.contact_id} onDone={() => setShowOnboarding(false)} />}
     </div>
   )
 }

@@ -124,6 +124,18 @@ export function usePortalData(contactId) {
     })
   }, [])
 
+  const signContract = async (contractId, sig, currentData) => {
+    const { data } = await db.contracts.update(contractId, {
+      status: 'client_signed',
+      client_signed_at: new Date().toLocaleDateString('es-PE'),
+      data: { ...currentData, client_signature: sig },
+    })
+    if (data) {
+      setContracts(prev => prev.map(c => c.id === contractId ? { ...c, status: 'client_signed', data: { ...c.data, client_signature: sig } } : c))
+    }
+    return data
+  }
+
   const createConversation = async (userId) => {
     if (!contactId || !userId) return null
     const { data: conv } = await db.conversations.create({
@@ -192,5 +204,6 @@ export function usePortalData(contactId) {
     uploadAndSend,
     uploadAndSendVoice,
     broadcastTyping,
+    signContract,
   }
 }

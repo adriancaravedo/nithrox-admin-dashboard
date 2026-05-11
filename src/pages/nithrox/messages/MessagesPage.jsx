@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../lib/supabase'
@@ -171,11 +171,13 @@ function TypingIndicator({ name, color }) {
 }
 
 // ── New Conversation Dialog ───────────────────────────────────
-function NewConvoDialog({ contacts, companies, onStart, onClose }) {
+function NewConvoDialog({ contacts, companies, onStart, onClose, preContactId }) {
   const [search, setSearch] = useState('')
   const filtered = contacts.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
+    // If pre-filtered by contactId, show only that contact
+    (preContactId ? c.id === preContactId : true) &&
+    (c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email?.toLowerCase().includes(search.toLowerCase()))
   )
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -571,13 +573,14 @@ export default function MessagesPage() {
   const {
     messages, sendMessage, markRead, createConversation,
     deleteMessage: storeDeleteMsg, updateConversationSettings, updateMessageReadAt,
-    appendRealtimeMessage, deleteConversation,
+    appendRealtimeMessage, fetchAndAppendConversation, deleteConversation,
     companies, contacts, deals, projects, contracts,
     chatSettings, fetchChatSettings, saveChatSettings,
     addMeeting, user: storeUser,
   } = useStore()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const [active, setActive] = useState(null)
   const [text, setText] = useState('')
@@ -601,9 +604,18 @@ export default function MessagesPage() {
   useEffect(() => { activeRef.current = active }, [active])
   useEffect(() => { fetchChatSettings() }, [])
 
+  // Auto-select conversation by contactId URL param (e.g. from ContactDetail)
   useEffect(() => {
+    const contactId = searchParams.get('contactId')
+    if (contactId) {
+      const conv = messages.find(m => m.contact_id === contactId)
+      if (conv) { setActive(conv.id); return }
+      // No conversation yet — open new convo dialog
+      if (messages.length > 0 || contacts.length > 0) setShowNew(true)
+      return
+    }
     if (!active && messages.length > 0) setActive(messages[0].id)
-  }, [messages.length])
+  }, [messages.length, searchParams])
 
   const activeConvo = messages.find(m => m.id === active)
 
@@ -615,15 +627,21 @@ export default function MessagesPage() {
   useEffect(() => {
     const channel = supabase
       .channel('admin-global-msgs-v2')
+      // New message from client
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new
         if (msg.from_role !== 'client') return
         appendRealtimeMessage(msg.conversation_id, msg)
         if (msg.conversation_id === activeRef.current) db.messages.markClientRead(msg.conversation_id)
       })
+      // Read receipt updates
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new
         if (msg.read_at && msg.from_role === 'admin') updateMessageReadAt(msg.conversation_id, msg.id, msg.read_at)
+      })
+      // New conversation initiated by client
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversations' }, async (payload) => {
+        await fetchAndAppendConversation(payload.new.id)
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -663,7 +681,11 @@ export default function MessagesPage() {
     await sendMessage(active, msg, user?.id, 'admin')
   }
   const handleNewConvo = async (contact, company) => {
-    const existing = messages.find(m => m.company_id === contact.company_id)
+    // Check by contact_id first, then by company_id
+    const existing = messages.find(m =>
+      m.contact_id === contact.id ||
+      (contact.company_id && m.company_id === contact.company_id)
+    )
     if (existing) { setActive(existing.id); setShowNew(false); return }
     const conv = await createConversation(contact, company)
     if (conv) setActive(conv.id)
@@ -982,7 +1004,7 @@ export default function MessagesPage() {
       </div>
 
       {/* Popups */}
-      {showNew && <NewConvoDialog contacts={contacts} companies={companies} onStart={handleNewConvo} onClose={() => setShowNew(false)} />}
+      {showNew && <NewConvoDialog contacts={contacts} companies={companies} onStart={handleNewConvo} onClose={() => setShowNew(false)} preContactId={searchParams.get('contactId')} />}
       {popup === 'meeting' && <MeetingPopup convo={activeConvo} contacts={contacts} onSend={handleMeetingSubmit} onClose={() => setPopup(null)} />}
       {popup === 'ficha' && <ClientInfoPopup convo={activeConvo} contacts={contacts} companies={companies} onClose={() => setPopup(null)} />}
       {popup === 'contrato' && <ContractPopup convo={activeConvo} contracts={contracts || []} onClose={() => setPopup(null)} />}

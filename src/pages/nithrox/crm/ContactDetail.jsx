@@ -18,7 +18,8 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import {
   Mail, Phone, ListTodo, Calendar, Plus, Trash2, Pin,
-  GripVertical, Check, X, ExternalLink, FileText, Building2
+  GripVertical, Check, X, ExternalLink, FileText, Building2,
+  MessageSquare, FolderKanban
 } from 'lucide-react'
 
 // ── Task item ────────────────────────────────────────────────
@@ -74,7 +75,7 @@ const CONTRACT_STATUS = {
 export default function ContactDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { contacts, companies, deals, contracts: storeContracts, updateContact, addCompany, addDeal } = useStore()
+  const { contacts, companies, deals, contracts: storeContracts, projects, messages: conversations, updateContact, addCompany, addDeal } = useStore()
 
   const contact = contacts.find(c => c.id === id)
   if (!contact) return (
@@ -87,6 +88,8 @@ export default function ContactDetail() {
   const company = companies.find(c => c.id === contact.company_id)
   const contactDeals = deals.filter(d => d.contact_ids?.includes(id) || d.company_id === contact.company_id)
   const contactContracts = (storeContracts || []).filter(c => c.contact_id === id)
+  const contactProjects = (projects || []).filter(p => p.contact_id === id || p.company_id === contact.company_id)
+  const contactConversation = (conversations || []).find(m => m.contact_id === id)
 
   // Load active columns from CRM table config (same source as the table view)
   const activeCols = loadState(COL_DEFS_KEY_CONTACTS, CONTACTS_DEFAULT_COLS)
@@ -211,6 +214,11 @@ export default function ContactDetail() {
               <button onClick={() => setShowMeeting(true)}
                 className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
                 <Calendar className="w-4 h-4" /><span>Reunión</span>
+              </button>
+              <button onClick={() => navigate(`/messages?contactId=${id}`)}
+                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
+                <MessageSquare className="w-4 h-4" />
+                <span>{contactConversation ? 'Chat' : 'Nuevo chat'}</span>
               </button>
             </div>
 
@@ -396,6 +404,36 @@ export default function ContactDetail() {
               ) : (
                 <div className="border border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setShowAddDeal(true)}>
                   <p className="text-xs text-muted-foreground">Sin deals. Click para agregar.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Projects */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold">Proyectos ({contactProjects.length})</h3>
+                <button onClick={() => navigate('/projects')} className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  <Plus className="w-3 h-3" /> Add
+                </button>
+              </div>
+              {contactProjects.length > 0 ? (
+                <div className="space-y-2">
+                  {contactProjects.map(p => (
+                    <div key={p.id} className="border border-border rounded-lg p-3 cursor-pointer hover:bg-accent/30 transition-colors"
+                      onClick={() => navigate(`/projects/${p.id}`)}>
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <p className="text-xs font-medium leading-tight flex-1">{p.name}</p>
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600 shrink-0 capitalize">{p.phase}</span>
+                      </div>
+                      <button className="text-[10px] text-primary hover:underline flex items-center gap-0.5 mt-1">
+                        <FolderKanban className="w-3 h-3" /> Ver proyecto
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="border border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate('/projects')}>
+                  <p className="text-xs text-muted-foreground">Sin proyectos. Click para crear.</p>
                 </div>
               )}
             </div>
