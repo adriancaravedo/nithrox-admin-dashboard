@@ -933,11 +933,23 @@ export default function FormsPage() {
   const form = forms.find(f => f.id === activeForm)
   const questions = form?.questions || []
 
-  const createForm = () => {
+  const createForm = async () => {
     if (!newFormName.trim()) return
-    addForm({ name: newFormName.trim(), description: '', questions: DEFAULT_BRIEFING, theme: { preset: 'dark', font: 'mono' }, layout: 'one_by_one', settings: { show_progress: true, show_question_numbers: true, allow_back: true } })
+    const newForm = await addForm({
+      name: newFormName.trim(),
+      description: '',
+      questions: DEFAULT_BRIEFING,
+      theme: { preset: 'dark', font: 'mono' },
+      layout: 'one_by_one',
+      settings: { show_progress: true, show_question_numbers: true, allow_back: true },
+    })
     setNewFormName(''); setShowNew(false)
-    toast.success('Formulario creado con 14 preguntas base')
+    if (newForm) {
+      setActiveForm(newForm.id)
+      toast.success('Formulario creado con 14 preguntas base')
+    } else {
+      toast.error('Error al crear el formulario')
+    }
   }
 
   const updateQ = (qId, data) => updateForm(form.id, { questions: questions.map(q => q.id === qId ? { ...q, ...data } : q) })
