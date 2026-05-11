@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Paperclip, Mic, Square, Play, Pause, Volume2, Download, Check, CheckCheck, File as FileIcon } from 'lucide-react'
+import { Send, Paperclip, Mic, Square, Play, Pause, Volume2, Download, Check, CheckCheck, File as FileIcon, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { usePortalData } from '../../hooks/usePortalData'
 import { toast } from 'sonner'
@@ -51,7 +51,7 @@ function AudioPlayer({ url, duration, invert }) {
 }
 
 // ── Message ───────────────────────────────────────────────────
-function Message({ msg, profileInitial }) {
+function Message({ msg, profileInitial, adminName, adminAvatar }) {
   const isClient = msg.from_role === 'client'
   const isVoice = msg.is_voice_note
   const isImage = msg.attachment_type?.startsWith('image/')
@@ -59,8 +59,11 @@ function Message({ msg, profileInitial }) {
 
   return (
     <div className={`flex gap-2.5 ${isClient ? 'flex-row-reverse' : ''}`}>
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 self-end ${isClient ? 'bg-zinc-700' : 'bg-zinc-900'}`}>
-        {isClient ? (profileInitial || 'C') : 'AC'}
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 self-end overflow-hidden ${isClient ? 'bg-zinc-700' : 'bg-zinc-900'}`}>
+        {!isClient && adminAvatar
+          ? <img src={adminAvatar} alt="" className="w-full h-full object-cover" />
+          : (!isClient ? (adminName?.[0]?.toUpperCase() || 'A') : (profileInitial || 'C'))
+        }
       </div>
       <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
         {isVoice ? (
@@ -94,7 +97,7 @@ function Message({ msg, profileInitial }) {
         )}
         <div className="flex items-center gap-1 mt-0.5">
           <p className="text-[10px] text-zinc-400">{fmt(msg.created_at)}</p>
-          {isClient && !isDeleted && (
+          {isClient && (
             msg.read_at
               ? <CheckCheck className="w-3 h-3 text-blue-500" />
               : <Check className="w-3 h-3 text-zinc-300" />
@@ -106,11 +109,14 @@ function Message({ msg, profileInitial }) {
 }
 
 // ── Typing Dots ───────────────────────────────────────────────
-function TypingIndicator() {
+function TypingIndicator({ adminName, adminAvatar }) {
   return (
     <div className="flex gap-2.5 items-end">
-      <div className="w-7 h-7 rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-        AC
+      <div className="w-7 h-7 rounded-full bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden">
+        {adminAvatar
+          ? <img src={adminAvatar} alt="" className="w-full h-full object-cover" />
+          : (adminName?.[0]?.toUpperCase() || 'A')
+        }
       </div>
       <div className="px-3.5 py-2.5 bg-white border border-zinc-200 rounded-2xl rounded-tl-sm flex items-center gap-1 h-9">
         {[0, 150, 300].map(d => (
@@ -126,21 +132,23 @@ function TypingIndicator() {
 export default function PortalMensajes() {
   const { profile, user } = useAuth()
   const {
-    conversation, loading, adminTyping,
-    sendMessage, uploadAndSend, uploadAndSendVoice, broadcastTyping,
+    conversation, loading, adminTyping, chatSettings,
+    createConversation, sendMessage, uploadAndSend, uploadAndSendVoice, broadcastTyping,
   } = usePortalData(profile?.contact_id)
 
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recDuration, setRecDuration] = useState(0)
+  const [creating, setCreating] = useState(false)
 
   const bottomRef = useRef()
   const fileInputRef = useRef()
   const recorderRef = useRef()
   const recTimerRef = useRef()
-  const adminOnline = localStorage.getItem('ntx_admin_online') !== '0'
 
+  const adminName = chatSettings?.display_name || 'Soporte'
+  const adminAvatar = chatSettings?.avatar_url || null
   const msgs = (conversation?.messages || []).filter(m => !m.deleted_at)
   const allowAttachments = conversation?.allow_attachments !== false
   const allowVoice = conversation?.allow_voice_notes || false
@@ -169,8 +177,8 @@ export default function PortalMensajes() {
     try {
       setSending(true)
       await uploadAndSend(file, user?.id)
-    } catch {
-      toast.error('Error al subir archivo')
+    } catch (err) {
+      toast.error(err.message || 'Error al subir archivo')
     } finally {
       setSending(false)
       e.target.value = ''
@@ -223,6 +231,18 @@ export default function PortalMensajes() {
     }
   }
 
+  const handleContactSupport = async () => {
+    if (!user?.id) return
+    setCreating(true)
+    try {
+      await createConversation(user.id)
+    } catch {
+      toast.error('No se pudo iniciar la conversación')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-zinc-400 text-sm">
@@ -233,9 +253,32 @@ export default function PortalMensajes() {
 
   if (!conversation) {
     return (
-      <div className="flex items-center justify-center h-64 text-zinc-400 text-sm text-center px-8">
-        No tienes una conversación activa.<br />
-        <span className="text-xs mt-1 block">Nithrox te contactará pronto.</span>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-7rem)] gap-6 px-8">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center overflow-hidden">
+          {adminAvatar
+            ? <img src={adminAvatar} alt="" className="w-full h-full object-cover" />
+            : <MessageSquare className="w-7 h-7 text-white" />
+          }
+        </div>
+        <div className="text-center">
+          <p className="font-bold text-zinc-900 text-sm">{adminName}</p>
+          <p className="text-xs text-zinc-400 mt-1">
+            {chatSettings?.welcome_message || 'Hola, ¿en qué te puedo ayudar?'}
+          </p>
+        </div>
+        <button
+          onClick={handleContactSupport}
+          disabled={creating}
+          className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white text-sm font-bold rounded-xl hover:bg-zinc-700 transition-colors disabled:opacity-50"
+        >
+          <MessageSquare className="w-4 h-4" />
+          {creating ? 'Iniciando...' : 'Contactar a soporte'}
+        </button>
+        {chatSettings?.response_time && (
+          <p className="text-[10px] text-zinc-400">
+            Tiempo de respuesta estimado: {chatSettings.response_time}
+          </p>
+        )}
       </div>
     )
   }
@@ -244,15 +287,18 @@ export default function PortalMensajes() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ fontFamily: "'Geist Mono', monospace" }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-200 bg-white shrink-0">
-        <div className="w-9 h-9 bg-zinc-900 rounded-xl flex items-center justify-center">
-          <span className="text-white font-black text-[10px]">AC</span>
+        <div className="w-9 h-9 bg-zinc-900 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+          {adminAvatar
+            ? <img src={adminAvatar} alt="" className="w-full h-full object-cover" />
+            : <span className="text-white font-black text-[10px]">{adminName?.[0]?.toUpperCase() || 'A'}</span>
+          }
         </div>
         <div>
-          <p className="text-sm font-bold">Adrian Caravedo · Nithrox</p>
+          <p className="text-sm font-bold">{adminName}</p>
           <div className="flex items-center gap-1.5">
-            <div className={`w-2 h-2 rounded-full ${adminOnline ? 'bg-green-500 animate-pulse' : 'bg-zinc-300'}`} />
-            <p className={`text-[10px] font-bold ${adminOnline ? 'text-green-600' : 'text-zinc-400'}`}>
-              {adminOnline ? 'En línea' : 'Offline — responderá pronto'}
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <p className="text-[10px] font-bold text-green-600">
+              {chatSettings?.response_time ? `Responde en ${chatSettings.response_time}` : 'En línea'}
             </p>
           </div>
         </div>
@@ -262,13 +308,19 @@ export default function PortalMensajes() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50">
         {msgs.length === 0 && (
           <div className="text-center text-xs text-zinc-400 mt-8">
-            No hay mensajes aún. ¡Inicia la conversación!
+            {chatSettings?.welcome_message || 'No hay mensajes aún. ¡Inicia la conversación!'}
           </div>
         )}
         {msgs.map(msg => (
-          <Message key={msg.id} msg={msg} profileInitial={profile?.name?.[0]} />
+          <Message
+            key={msg.id}
+            msg={msg}
+            profileInitial={profile?.name?.[0]}
+            adminName={adminName}
+            adminAvatar={adminAvatar}
+          />
         ))}
-        {adminTyping && <TypingIndicator />}
+        {adminTyping && <TypingIndicator adminName={adminName} adminAvatar={adminAvatar} />}
         <div ref={bottomRef} />
       </div>
 

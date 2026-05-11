@@ -3,15 +3,16 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, FolderKanban, CreditCard,
-  FileText, MessageSquare, LogOut, Menu, X
+  FileText, MessageSquare, LogOut, Menu, X, Calendar
 } from 'lucide-react'
 
 const NAV = [
-  { to: '/portal',           label: 'Dashboard',    icon: LayoutDashboard, end: true },
-  { to: '/portal/proyecto',  label: 'Mi proyecto',  icon: FolderKanban },
-  { to: '/portal/pagos',     label: 'Pagos',        icon: CreditCard },
-  { to: '/portal/documentos',label: 'Documentos',   icon: FileText },
-  { to: '/portal/mensajes',  label: 'Mensajes',     icon: MessageSquare },
+  { to: '/portal',             label: 'Dashboard',    icon: LayoutDashboard, end: true },
+  { to: '/portal/proyecto',    label: 'Mi proyecto',  icon: FolderKanban },
+  { to: '/portal/pagos',       label: 'Pagos',        icon: CreditCard },
+  { to: '/portal/documentos',  label: 'Documentos',   icon: FileText },
+  { to: '/portal/reuniones',   label: 'Reuniones',    icon: Calendar },
+  { to: '/portal/mensajes',    label: 'Mensajes',     icon: MessageSquare },
 ]
 
 export default function PortalLayout() {

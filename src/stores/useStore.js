@@ -364,6 +364,44 @@ export const useStore = create((set, get) => ({
     }))
   },
 
+  deleteConversation: async (convId) => {
+    await db.conversations.delete(convId)
+    set(s => ({ messages: s.messages.filter(m => m.id !== convId) }))
+  },
+
+  // ── Chat settings (admin profile + global config) ─────────────
+  chatSettings: {},
+
+  fetchChatSettings: async () => {
+    const { data } = await db.settings.get('chat')
+    if (data?.value) set({ chatSettings: data.value })
+  },
+
+  saveChatSettings: async (settings) => {
+    await db.settings.set('chat', settings)
+    set({ chatSettings: settings })
+  },
+
+  // ── Meetings ──────────────────────────────────────────────────
+  meetings: [],
+
+  fetchMeetings: async () => {
+    const { data } = await db.meetings.list()
+    if (data) set({ meetings: data })
+  },
+
+  addMeeting: async (meeting) => {
+    const { data } = await db.meetings.create(meeting)
+    if (data) set(s => ({ meetings: [...s.meetings, data] }))
+    return data
+  },
+
+  updateMeeting: async (id, updates) => {
+    const { data } = await db.meetings.update(id, updates)
+    if (data) set(s => ({ meetings: s.meetings.map(m => m.id === id ? data : m) }))
+    return data
+  },
+
   // ── Notifications ─────────────────────────────────────────────
   notifications: [],
 
