@@ -14,6 +14,7 @@ import PortalProyecto from './pages/portal/PortalProyecto'
 import PortalPagos from './pages/portal/PortalPagos'
 import PortalDocumentos from './pages/portal/PortalDocumentos'
 import PortalMensajes from './pages/portal/PortalMensajes'
+import PortalReuniones from './pages/portal/PortalReuniones'
 
 // Admin pages
 import Dashboard from './pages/nithrox/dashboard/Dashboard'
@@ -86,6 +87,7 @@ export default function App() {
               <Route path="pagos" element={<PortalPagos />} />
               <Route path="documentos" element={<PortalDocumentos />} />
               <Route path="mensajes" element={<PortalMensajes />} />
+              <Route path="reuniones" element={<PortalReuniones />} />
             </Route>
 
             {/* Admin */}

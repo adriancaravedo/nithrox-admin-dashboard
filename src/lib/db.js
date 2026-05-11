@@ -58,6 +58,7 @@ export const db = {
       .eq('contact_id', contactId)
       .single(),
     update: (id, data) => supabase.from('conversations').update(data).eq('id', id).select().single(),
+    delete: (id) => supabase.from('conversations').delete().eq('id', id),
     updateLastMessage: (id, text) => supabase
       .from('conversations')
       .update({ last_message: text, last_at: new Date().toISOString() })
@@ -155,6 +156,20 @@ export const db = {
     create: (data) => supabase.from('servers').insert(data).select().single(),
     update: (id, data) => supabase.from('servers').update(data).eq('id', id).select().single(),
     delete: (id) => supabase.from('servers').delete().eq('id', id),
+  },
+
+  // ── App Settings ───────────────────────────────────────────
+  settings: {
+    get: (key) => supabase.from('app_settings').select('value').eq('key', key).single(),
+    set: (key, value) => supabase.from('app_settings').upsert({ key, value }).select().single(),
+  },
+
+  // ── Meetings ───────────────────────────────────────────────
+  meetings: {
+    list: () => supabase.from('meetings').select('*, contacts(id,name), companies(id,name)').order('date').order('time'),
+    create: (data) => supabase.from('meetings').insert(data).select().single(),
+    update: (id, data) => supabase.from('meetings').update(data).eq('id', id).select().single(),
+    forContact: (contactId) => supabase.from('meetings').select('*').eq('contact_id', contactId).order('date'),
   },
 
   // ── Profiles ───────────────────────────────────────────────

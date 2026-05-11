@@ -407,6 +407,51 @@ create policy "client_mark_read" on messages for update
 -- Allow admins to update conversation settings (already covered by admin_all_conversations)
 
 -- ============================================================
+-- App Settings (admin profile, chat config)
+-- ============================================================
+create table if not exists app_settings (
+  key  text primary key,
+  value jsonb default '{}'
+);
+alter table app_settings enable row level security;
+drop policy if exists "public_read_settings" on app_settings;
+create policy "public_read_settings" on app_settings for select using (true);
+drop policy if exists "admin_write_settings" on app_settings;
+create policy "admin_write_settings" on app_settings for all using (is_admin()) with check (is_admin());
+
+-- ============================================================
+-- Meetings
+-- ============================================================
+create table if not exists meetings (
+  id              uuid primary key default gen_random_uuid(),
+  title           text not null,
+  contact_id      uuid references contacts(id) on delete set null,
+  company_id      uuid references companies(id) on delete set null,
+  conversation_id uuid references conversations(id) on delete set null,
+  date            date not null,
+  time            text,
+  duration_min    int default 60,
+  link            text,
+  notes           text,
+  status          text default 'pending' check (status in ('pending','confirmed','cancelled')),
+  created_at      timestamptz default now()
+);
+alter table meetings enable row level security;
+drop policy if exists "admin_all_meetings" on meetings;
+create policy "admin_all_meetings" on meetings for all using (is_admin()) with check (is_admin());
+drop policy if exists "client_read_meetings" on meetings;
+create policy "client_read_meetings" on meetings for select using (contact_id = my_contact_id());
+drop policy if exists "client_confirm_meeting" on meetings;
+create policy "client_confirm_meeting" on meetings for update using (contact_id = my_contact_id()) with check (true);
+alter publication supabase_realtime add table meetings;
+
+-- Allow client to start their own conversation (contact support)
+drop policy if exists "client_create_own_conversation" on conversations;
+create policy "client_create_own_conversation" on conversations for insert with check (
+  contact_id = my_contact_id()
+);
+
+-- ============================================================
 -- Storage — message-attachments bucket
 -- Run in Supabase Dashboard → Storage → New Bucket: "message-attachments" (public)
 -- Then run these policies in SQL Editor:

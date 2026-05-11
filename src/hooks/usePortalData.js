@@ -2,11 +2,22 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { db } from '../lib/db'
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 export function usePortalData(contactId) {
   const [project, setProject] = useState(null)
   const [conversation, setConversation] = useState(null)
   const [contracts, setContracts] = useState([])
   const [proposals, setProposals] = useState([])
+  const [meetings, setMeetings] = useState([])
+  const [chatSettings, setChatSettings] = useState({})
   const [loading, setLoading] = useState(true)
   const [adminTyping, setAdminTyping] = useState(false)
 
@@ -21,16 +32,27 @@ export function usePortalData(contactId) {
     const load = async () => {
       setLoading(true)
       try {
-        const [{ data: proj }, { data: conv }, { data: ctr }, { data: prop }] = await Promise.all([
+        const [
+          { data: proj },
+          { data: conv },
+          { data: ctr },
+          { data: prop },
+          { data: mtg },
+          { data: settingsRow },
+        ] = await Promise.all([
           db.projects.forClient(contactId),
           db.conversations.forClient(contactId),
           db.contracts.forClient(contactId),
           db.proposals.forClient(contactId),
+          db.meetings.forContact(contactId),
+          db.settings.get('chat'),
         ])
         setProject(proj || null)
         setConversation(conv || null)
         setContracts(ctr || [])
         setProposals(prop || [])
+        setMeetings(mtg || [])
+        setChatSettings(settingsRow?.value || {})
       } catch (err) {
         console.error('Portal load error:', err)
       } finally {
@@ -40,7 +62,7 @@ export function usePortalData(contactId) {
     load()
   }, [contactId])
 
-  // Realtime: message inserts + read-receipt updates
+  // Realtime: message inserts + updates
   useEffect(() => {
     if (!conversation?.id) return
 
@@ -56,7 +78,6 @@ export function usePortalData(contactId) {
             ...prev,
             messages: [...(prev.messages || []), msg],
           }))
-          // Mark admin messages as read since client is viewing
           db.messages.markAdminRead(conversation.id)
         }
       })
@@ -88,7 +109,6 @@ export function usePortalData(contactId) {
 
     typingChannelRef.current = typingChannel
 
-    // Mark admin messages as read when portal loads
     db.messages.markAdminRead(conversation.id)
 
     return () => {
@@ -103,6 +123,19 @@ export function usePortalData(contactId) {
       type: 'broadcast', event: 'typing', payload: { role: 'client' },
     })
   }, [])
+
+  const createConversation = async (userId) => {
+    if (!contactId || !userId) return null
+    const { data: conv } = await db.conversations.create({
+      contact_id: contactId,
+      last_message: '',
+      last_at: new Date().toISOString(),
+    })
+    if (conv) {
+      setConversation({ ...conv, messages: [] })
+    }
+    return conv
+  }
 
   const sendMessage = async (text, userId, extra = {}) => {
     if (!conversation?.id || !text.trim()) return
@@ -125,13 +158,10 @@ export function usePortalData(contactId) {
 
   const uploadAndSend = async (file, userId) => {
     if (!conversation?.id || !file) return
-    const ext = file.name.split('.').pop()
-    const path = `${conversation.id}/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('message-attachments').upload(path, file)
-    if (error) throw error
-    const { data: { publicUrl } } = supabase.storage.from('message-attachments').getPublicUrl(path)
+    if (file.size > 5 * 1024 * 1024) throw new Error('Archivo demasiado grande (máx 5MB)')
+    const dataUrl = await fileToDataUrl(file)
     return sendMessage(file.name, userId, {
-      attachment_url: publicUrl,
+      attachment_url: dataUrl,
       attachment_name: file.name,
       attachment_type: file.type,
     })
@@ -139,12 +169,9 @@ export function usePortalData(contactId) {
 
   const uploadAndSendVoice = async (blob, duration, userId) => {
     if (!conversation?.id) return
-    const path = `${conversation.id}/voice_${Date.now()}.webm`
-    const { error } = await supabase.storage.from('message-attachments').upload(path, blob)
-    if (error) throw error
-    const { data: { publicUrl } } = supabase.storage.from('message-attachments').getPublicUrl(path)
+    const dataUrl = await fileToDataUrl(blob)
     return sendMessage('🎤 Nota de voz', userId, {
-      attachment_url: publicUrl,
+      attachment_url: dataUrl,
       attachment_type: 'audio/webm',
       is_voice_note: true,
       duration_sec: duration,
@@ -156,8 +183,11 @@ export function usePortalData(contactId) {
     conversation,
     contracts,
     proposals,
+    meetings,
+    chatSettings,
     loading,
     adminTyping,
+    createConversation,
     sendMessage,
     uploadAndSend,
     uploadAndSendVoice,
