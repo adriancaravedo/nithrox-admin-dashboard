@@ -1,20 +1,27 @@
 -- ============================================================
 -- NTX Command Center — Supabase Schema
 -- Run this in Supabase SQL Editor (Dashboard > SQL Editor)
+-- Safe to re-run: all statements are idempotent
 -- ============================================================
 
 -- ── Extensions ───────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
 
--- ── Helpers ──────────────────────────────────────────────────
+-- ── Helper functions ─────────────────────────────────────────
 create or replace function is_admin()
 returns boolean language sql security definer as $$
-  select exists (
-    select 1 from profiles where id = auth.uid() and role = 'admin'
-  );
+  select exists (select 1 from profiles where id = auth.uid() and role = 'admin');
 $$;
 
--- ── Companies ────────────────────────────────────────────────
+create or replace function my_contact_id()
+returns uuid language sql security definer as $$
+  select contact_id from profiles where id = auth.uid();
+$$;
+
+-- ============================================================
+-- STEP 1: Create tables (IF NOT EXISTS — safe to re-run)
+-- ============================================================
+
 create table if not exists companies (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
@@ -33,34 +40,23 @@ create table if not exists companies (
   last_activity timestamptz default now()
 );
 
--- Safe migrations (idempotent — run any time)
-alter table companies add column if not exists custom_fields jsonb default '{}';
-alter table contacts  add column if not exists custom_fields jsonb default '{}';
-alter table companies enable row level security;
-
--- ── Contacts ─────────────────────────────────────────────────
 create table if not exists contacts (
-  id                  uuid primary key default gen_random_uuid(),
-  name                text not null,
-  email               text,
-  phone               text,
-  role                text,
-  company_id          uuid references companies(id) on delete set null,
-  lead_status         text default 'New',
-  preferred_channels  text,
-  topics              text,
-  notes               text,
-  avatar_color        text,
-  custom_fields       jsonb default '{}',
-  created_at          timestamptz default now(),
-  last_activity       timestamptz default now()
+  id                 uuid primary key default gen_random_uuid(),
+  name               text not null,
+  email              text,
+  phone              text,
+  role               text,
+  company_id         uuid references companies(id) on delete set null,
+  lead_status        text default 'New',
+  preferred_channels text,
+  topics             text,
+  notes              text,
+  avatar_color       text,
+  custom_fields      jsonb default '{}',
+  created_at         timestamptz default now(),
+  last_activity      timestamptz default now()
 );
-alter table contacts enable row level security;
 
--- ── Extend profiles with contact_id (after contacts table exists) ──
-alter table profiles add column if not exists contact_id uuid references contacts(id) on delete set null;
-
--- ── Deals ────────────────────────────────────────────────────
 create table if not exists deals (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
@@ -78,9 +74,7 @@ create table if not exists deals (
   created_at    timestamptz default now(),
   last_activity timestamptz default now()
 );
-alter table deals enable row level security;
 
--- ── Projects ─────────────────────────────────────────────────
 create table if not exists projects (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
@@ -96,9 +90,7 @@ create table if not exists projects (
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
-alter table projects enable row level security;
 
--- ── Conversations (chat threads per client) ───────────────────
 create table if not exists conversations (
   id            uuid primary key default gen_random_uuid(),
   company_id    uuid references companies(id) on delete cascade,
@@ -109,9 +101,7 @@ create table if not exists conversations (
   unread_client int default 0,
   created_at    timestamptz default now()
 );
-alter table conversations enable row level security;
 
--- ── Messages ─────────────────────────────────────────────────
 create table if not exists messages (
   id              uuid primary key default gen_random_uuid(),
   conversation_id uuid references conversations(id) on delete cascade not null,
@@ -120,28 +110,24 @@ create table if not exists messages (
   text            text not null,
   created_at      timestamptz default now()
 );
-alter table messages enable row level security;
 
--- ── Contracts ────────────────────────────────────────────────
 create table if not exists contracts (
-  id                  uuid primary key default gen_random_uuid(),
-  name                text not null,
-  company_id          uuid references companies(id) on delete set null,
-  contact_id          uuid references contacts(id) on delete set null,
-  party_type          text default 'Contrato',
-  status              text default 'draft',
-  expiry_date         date,
-  sent_at             text,
-  client_signed_at    text,
-  nithrox_signed_at   text,
-  pdf_url             text,
-  pdf_name            text,
-  data                jsonb default '{}',
-  created_at          timestamptz default now()
+  id                uuid primary key default gen_random_uuid(),
+  name              text not null,
+  company_id        uuid references companies(id) on delete set null,
+  contact_id        uuid references contacts(id) on delete set null,
+  party_type        text default 'Contrato',
+  status            text default 'draft',
+  expiry_date       date,
+  sent_at           text,
+  client_signed_at  text,
+  nithrox_signed_at text,
+  pdf_url           text,
+  pdf_name          text,
+  data              jsonb default '{}',
+  created_at        timestamptz default now()
 );
-alter table contracts enable row level security;
 
--- ── Proposals ────────────────────────────────────────────────
 create table if not exists proposals (
   id          uuid primary key default gen_random_uuid(),
   title       text not null,
@@ -155,9 +141,7 @@ create table if not exists proposals (
   accepted    boolean default false,
   created_at  timestamptz default now()
 );
-alter table proposals enable row level security;
 
--- ── Forms ────────────────────────────────────────────────────
 create table if not exists forms (
   id          uuid primary key default gen_random_uuid(),
   title       text not null,
@@ -167,17 +151,14 @@ create table if not exists forms (
   views       int default 0,
   created_at  timestamptz default now()
 );
-alter table forms enable row level security;
 
 create table if not exists form_responses (
-  id          uuid primary key default gen_random_uuid(),
-  form_id     uuid references forms(id) on delete cascade not null,
-  data        jsonb default '{}',
+  id           uuid primary key default gen_random_uuid(),
+  form_id      uuid references forms(id) on delete cascade not null,
+  data         jsonb default '{}',
   submitted_at timestamptz default now()
 );
-alter table form_responses enable row level security;
 
--- ── Documents ────────────────────────────────────────────────
 create table if not exists documents (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
@@ -189,9 +170,7 @@ create table if not exists documents (
   size        bigint default 0,
   created_at  timestamptz default now()
 );
-alter table documents enable row level security;
 
--- ── Notifications ────────────────────────────────────────────
 create table if not exists notifications (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid references auth.users(id) on delete cascade not null,
@@ -203,9 +182,7 @@ create table if not exists notifications (
   read        boolean default false,
   created_at  timestamptz default now()
 );
-alter table notifications enable row level security;
 
--- ── Portals ──────────────────────────────────────────────────
 create table if not exists portals (
   id          uuid primary key default gen_random_uuid(),
   name        text,
@@ -214,41 +191,106 @@ create table if not exists portals (
   active      boolean default true,
   created_at  timestamptz default now()
 );
-alter table portals enable row level security;
 
--- ── Servers ──────────────────────────────────────────────────
 create table if not exists servers (
-  id            uuid primary key default gen_random_uuid(),
-  name          text not null,
-  type          text,
-  ip            text,
-  plan          text,
-  provider      text,
-  status        text default 'online',
-  cpu           numeric default 0,
-  ram           numeric default 0,
-  disk          numeric default 0,
-  sites         int default 0,
-  monthly_cost  numeric default 0,
-  currency      text default 'USD',
-  cpanel_url    text,
-  ssl_expiry    date,
-  domain        text,
-  project_ids   uuid[] default '{}',
-  client_ids    uuid[] default '{}',
-  created_at    timestamptz default now()
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,
+  type         text,
+  ip           text,
+  plan         text,
+  provider     text,
+  status       text default 'online',
+  cpu          numeric default 0,
+  ram          numeric default 0,
+  disk         numeric default 0,
+  sites        int default 0,
+  monthly_cost numeric default 0,
+  currency     text default 'USD',
+  cpanel_url   text,
+  ssl_expiry   date,
+  domain       text,
+  project_ids  uuid[] default '{}',
+  client_ids   uuid[] default '{}',
+  created_at   timestamptz default now()
 );
-alter table servers enable row level security;
+
+create table if not exists app_settings (
+  key   text primary key,
+  value jsonb default '{}'
+);
+
+create table if not exists meetings (
+  id              uuid primary key default gen_random_uuid(),
+  title           text not null,
+  contact_id      uuid references contacts(id) on delete set null,
+  company_id      uuid references companies(id) on delete set null,
+  conversation_id uuid references conversations(id) on delete set null,
+  date            date not null,
+  time            text,
+  duration_min    int default 60,
+  link            text,
+  notes           text,
+  status          text default 'pending' check (status in ('pending','confirmed','cancelled')),
+  created_at      timestamptz default now()
+);
 
 -- ============================================================
--- RLS Policies
+-- STEP 2: Add columns to existing tables (idempotent migrations)
 -- ============================================================
 
--- Helper: check if current user is linked to a contact via profiles
-create or replace function my_contact_id()
-returns uuid language sql security definer as $$
-  select contact_id from profiles where id = auth.uid();
-$$;
+-- profiles — link to contact
+alter table profiles add column if not exists contact_id uuid references contacts(id) on delete set null;
+
+-- companies / contacts — custom fields
+alter table companies add column if not exists custom_fields jsonb default '{}';
+alter table contacts  add column if not exists custom_fields jsonb default '{}';
+
+-- messages — v2 fields
+alter table messages add column if not exists read_at         timestamptz;
+alter table messages add column if not exists deleted_at      timestamptz;
+alter table messages add column if not exists deleted_by      uuid references auth.users(id) on delete set null;
+alter table messages add column if not exists attachment_url  text;
+alter table messages add column if not exists attachment_name text;
+alter table messages add column if not exists attachment_type text;
+alter table messages add column if not exists is_voice_note   boolean default false;
+alter table messages add column if not exists duration_sec    numeric;
+
+-- conversations — v2 fields + user_id for unlinked portal users
+alter table conversations add column if not exists allow_attachments boolean default true;
+alter table conversations add column if not exists allow_voice_notes boolean default false;
+alter table conversations add column if not exists user_id           uuid references auth.users(id) on delete set null;
+
+-- ============================================================
+-- STEP 3: Enable RLS on all tables
+-- ============================================================
+
+alter table companies      enable row level security;
+alter table contacts       enable row level security;
+alter table deals          enable row level security;
+alter table projects       enable row level security;
+alter table conversations  enable row level security;
+alter table messages       enable row level security;
+alter table contracts      enable row level security;
+alter table proposals      enable row level security;
+alter table forms          enable row level security;
+alter table form_responses enable row level security;
+alter table documents      enable row level security;
+alter table notifications  enable row level security;
+alter table portals        enable row level security;
+alter table servers        enable row level security;
+alter table app_settings   enable row level security;
+alter table meetings       enable row level security;
+
+-- ============================================================
+-- STEP 4: RLS Policies
+-- ============================================================
+
+-- ── profiles ─────────────────────────────────────────────────
+drop policy if exists "own_profile" on profiles;
+create policy "own_profile" on profiles for all using (id = auth.uid()) with check (id = auth.uid());
+
+drop policy if exists "admin_read_all_profiles" on profiles;
+create policy "admin_read_all_profiles" on profiles for select using (is_admin());
 
 -- ── companies ────────────────────────────────────────────────
 drop policy if exists "admin_all_companies" on companies;
@@ -275,17 +317,22 @@ drop policy if exists "admin_all_projects" on projects;
 create policy "admin_all_projects" on projects for all using (is_admin()) with check (is_admin());
 
 drop policy if exists "client_read_own_project" on projects;
-create policy "client_read_own_project" on projects for select using (
-  contact_id = my_contact_id()
-);
+create policy "client_read_own_project" on projects for select using (contact_id = my_contact_id());
 
--- ── conversations ─────────────────────────────────────────────
+-- ── conversations ────────────────────────────────────────────
 drop policy if exists "admin_all_conversations" on conversations;
 create policy "admin_all_conversations" on conversations for all using (is_admin()) with check (is_admin());
 
 drop policy if exists "client_read_own_conversation" on conversations;
 create policy "client_read_own_conversation" on conversations for select using (
   contact_id = my_contact_id() OR user_id = auth.uid()
+);
+
+-- Clients can start a support conversation (linked via contact_id OR user_id)
+drop policy if exists "client_create_own_conversation" on conversations;
+create policy "client_create_own_conversation" on conversations for insert with check (
+  contact_id = my_contact_id()
+  OR (user_id = auth.uid() AND contact_id IS NULL)
 );
 
 -- ── messages ─────────────────────────────────────────────────
@@ -306,23 +353,29 @@ create policy "client_insert_own_messages" on messages for insert with check (
   ) and from_role = 'client'
 );
 
+drop policy if exists "client_mark_read" on messages;
+create policy "client_mark_read" on messages for update
+  using (
+    conversation_id in (
+      select id from conversations where contact_id = my_contact_id() OR user_id = auth.uid()
+    )
+    and from_role = 'admin'
+  )
+  with check (true);
+
 -- ── contracts ────────────────────────────────────────────────
 drop policy if exists "admin_all_contracts" on contracts;
 create policy "admin_all_contracts" on contracts for all using (is_admin()) with check (is_admin());
 
 drop policy if exists "client_read_own_contracts" on contracts;
-create policy "client_read_own_contracts" on contracts for select using (
-  contact_id = my_contact_id()
-);
+create policy "client_read_own_contracts" on contracts for select using (contact_id = my_contact_id());
 
 -- ── proposals ────────────────────────────────────────────────
 drop policy if exists "admin_all_proposals" on proposals;
 create policy "admin_all_proposals" on proposals for all using (is_admin()) with check (is_admin());
 
 drop policy if exists "client_read_own_proposals" on proposals;
-create policy "client_read_own_proposals" on proposals for select using (
-  contact_id = my_contact_id()
-);
+create policy "client_read_own_proposals" on proposals for select using (contact_id = my_contact_id());
 
 -- ── forms ────────────────────────────────────────────────────
 drop policy if exists "admin_all_forms" on forms;
@@ -346,7 +399,7 @@ create policy "client_read_own_documents" on documents for select using (
   project_id in (select id from projects where contact_id = my_contact_id())
 );
 
--- ── notifications ─────────────────────────────────────────────
+-- ── notifications ────────────────────────────────────────────
 drop policy if exists "own_notifications" on notifications;
 create policy "own_notifications" on notifications for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
@@ -355,24 +408,31 @@ drop policy if exists "admin_all_portals" on portals;
 create policy "admin_all_portals" on portals for all using (is_admin()) with check (is_admin());
 
 drop policy if exists "client_read_own_portal" on portals;
-create policy "client_read_own_portal" on portals for select using (
-  contact_id = my_contact_id()
-);
+create policy "client_read_own_portal" on portals for select using (contact_id = my_contact_id());
 
 -- ── servers ──────────────────────────────────────────────────
 drop policy if exists "admin_all_servers" on servers;
 create policy "admin_all_servers" on servers for all using (is_admin()) with check (is_admin());
 
--- ── profiles ─────────────────────────────────────────────────
-drop policy if exists "own_profile" on profiles;
-create policy "own_profile" on profiles for all using (id = auth.uid()) with check (id = auth.uid());
+-- ── app_settings ─────────────────────────────────────────────
+drop policy if exists "public_read_settings" on app_settings;
+create policy "public_read_settings" on app_settings for select using (true);
 
-drop policy if exists "admin_read_all_profiles" on profiles;
-create policy "admin_read_all_profiles" on profiles for select using (is_admin());
+drop policy if exists "admin_write_settings" on app_settings;
+create policy "admin_write_settings" on app_settings for all using (is_admin()) with check (is_admin());
+
+-- ── meetings ─────────────────────────────────────────────────
+drop policy if exists "admin_all_meetings" on meetings;
+create policy "admin_all_meetings" on meetings for all using (is_admin()) with check (is_admin());
+
+drop policy if exists "client_read_meetings" on meetings;
+create policy "client_read_meetings" on meetings for select using (contact_id = my_contact_id());
+
+drop policy if exists "client_confirm_meeting" on meetings;
+create policy "client_confirm_meeting" on meetings for update using (contact_id = my_contact_id()) with check (true);
 
 -- ============================================================
--- Realtime
--- Enable realtime on tables that need live updates
+-- STEP 5: Realtime subscriptions (idempotent)
 -- ============================================================
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'messages') then
@@ -384,98 +444,21 @@ do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'conversations') then
     alter publication supabase_realtime add table conversations;
   end if;
-end $$;
-
--- ============================================================
--- Messages v2 — Run these ALTER TABLE statements if tables exist
--- ============================================================
-alter table messages add column if not exists read_at        timestamptz;
-alter table messages add column if not exists deleted_at     timestamptz;
-alter table messages add column if not exists deleted_by     uuid references auth.users(id) on delete set null;
-alter table messages add column if not exists attachment_url  text;
-alter table messages add column if not exists attachment_name text;
-alter table messages add column if not exists attachment_type text;
-alter table messages add column if not exists is_voice_note  boolean default false;
-alter table messages add column if not exists duration_sec   numeric;
-
--- Conversations v2
-alter table conversations add column if not exists allow_attachments  boolean default true;
-alter table conversations add column if not exists allow_voice_notes  boolean default false;
-
--- Allow clients to mark admin messages as read (update read_at only)
-drop policy if exists "client_mark_read" on messages;
-create policy "client_mark_read" on messages for update
-  using (
-    conversation_id in (select id from conversations where contact_id = my_contact_id() OR user_id = auth.uid())
-    and from_role = 'admin'
-  )
-  with check (true);
-
--- Allow admins to soft-delete any message (already covered by admin_all_messages)
--- Allow admins to update conversation settings (already covered by admin_all_conversations)
-
--- ============================================================
--- App Settings (admin profile, chat config)
--- ============================================================
-create table if not exists app_settings (
-  key  text primary key,
-  value jsonb default '{}'
-);
-alter table app_settings enable row level security;
-drop policy if exists "public_read_settings" on app_settings;
-create policy "public_read_settings" on app_settings for select using (true);
-drop policy if exists "admin_write_settings" on app_settings;
-create policy "admin_write_settings" on app_settings for all using (is_admin()) with check (is_admin());
-
--- ============================================================
--- Meetings
--- ============================================================
-create table if not exists meetings (
-  id              uuid primary key default gen_random_uuid(),
-  title           text not null,
-  contact_id      uuid references contacts(id) on delete set null,
-  company_id      uuid references companies(id) on delete set null,
-  conversation_id uuid references conversations(id) on delete set null,
-  date            date not null,
-  time            text,
-  duration_min    int default 60,
-  link            text,
-  notes           text,
-  status          text default 'pending' check (status in ('pending','confirmed','cancelled')),
-  created_at      timestamptz default now()
-);
-alter table meetings enable row level security;
-drop policy if exists "admin_all_meetings" on meetings;
-create policy "admin_all_meetings" on meetings for all using (is_admin()) with check (is_admin());
-drop policy if exists "client_read_meetings" on meetings;
-create policy "client_read_meetings" on meetings for select using (contact_id = my_contact_id());
-drop policy if exists "client_confirm_meeting" on meetings;
-create policy "client_confirm_meeting" on meetings for update using (contact_id = my_contact_id()) with check (true);
-do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'meetings') then
     alter publication supabase_realtime add table meetings;
   end if;
 end $$;
 
--- Allow client to start their own conversation (contact support)
--- Works for both linked contacts (contact_id) and unlinked portal users (user_id)
-alter table conversations add column if not exists user_id uuid references auth.users(id) on delete set null;
-
-drop policy if exists "client_create_own_conversation" on conversations;
-create policy "client_create_own_conversation" on conversations for insert with check (
-  contact_id = my_contact_id()
-  OR (user_id = auth.uid() AND contact_id IS NULL)
-);
-
 -- ============================================================
--- Storage — message-attachments bucket
--- Run in Supabase Dashboard → Storage → New Bucket: "message-attachments" (public)
--- Then run these policies in SQL Editor:
+-- RPC Functions
 -- ============================================================
--- insert into storage.buckets (id, name, public) values ('message-attachments', 'message-attachments', true) on conflict do nothing;
--- drop policy if exists "auth_upload_attachments" on storage.objects;
--- create policy "auth_upload_attachments" on storage.objects for insert to authenticated with check (bucket_id = 'message-attachments');
--- drop policy if exists "public_read_attachments" on storage.objects;
--- create policy "public_read_attachments" on storage.objects for select using (bucket_id = 'message-attachments');
--- drop policy if exists "admin_delete_attachments" on storage.objects;
--- create policy "admin_delete_attachments" on storage.objects for delete to authenticated using (bucket_id = 'message-attachments');
+create or replace function increment_unread(conv_id uuid, field_name text)
+returns void language plpgsql security definer as $$
+begin
+  if field_name = 'unread_admin' then
+    update conversations set unread_admin = unread_admin + 1 where id = conv_id;
+  elsif field_name = 'unread_client' then
+    update conversations set unread_client = unread_client + 1 where id = conv_id;
+  end if;
+end;
+$$;
