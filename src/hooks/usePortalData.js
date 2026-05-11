@@ -137,12 +137,13 @@ export function usePortalData(contactId) {
   }
 
   const createConversation = async (userId) => {
-    if (!contactId || !userId) return null
-    const { data: conv } = await db.conversations.create({
+    if (!userId) return null
+    const { data: conv, error } = await db.conversations.create({
       contact_id: contactId,
       last_message: '',
       last_at: new Date().toISOString(),
     })
+    if (error) { console.error('createConversation:', error); return null }
     if (conv) {
       setConversation({ ...conv, messages: [] })
     }

@@ -51,13 +51,7 @@ export default function Dashboard() {
   const { projects, contacts, companies, deals, messages, notifications } = useStore()
   const navigate = useNavigate()
   const activeProjects = projects.filter(p => !p._deleted)
-  const [tasks, setTasks] = useState([
-    { id: 1, text: 'Revisar propuesta Fashion Co.', done: false, priority: 'high' },
-    { id: 2, text: 'Enviar factura TechPe — Diseño', done: false, priority: 'high' },
-    { id: 3, text: 'Agendar kick off Cevichería Mar', done: true, priority: 'medium' },
-    { id: 4, text: 'Subir assets de branding al portal', done: false, priority: 'medium' },
-    { id: 5, text: 'Revisar checklist de desarrollo', done: false, priority: 'low' },
-  ])
+  const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState('')
 
   // Remove clock interval - no more time tracking
@@ -77,8 +71,8 @@ export default function Dashboard() {
   const unreadMessages = messages.reduce((s, m) => s + (m.unread || 0), 0)
   const unreadNotifs = notifications.filter(n => !n.read).length
 
-  const revenueByMonth = [18500, 22000, 19800, 31000, 28500, 35200]
-  const projectsByMonth = [2, 3, 2, 4, 3, activeProjects.length]
+  const revenueByMonth = totalRevenue > 0 ? [0, 0, 0, 0, 0, totalRevenue] : null
+  const projectsByMonth = activeProjects.length > 0 ? [0, 0, 0, 0, 0, activeProjects.length] : null
 
   const pendingApprovals = activeProjects.filter(p => {
     const pd = p.phases[p.phase]
@@ -146,7 +140,6 @@ export default function Dashboard() {
             label="Revenue total"
             value={`$${totalRevenue.toLocaleString()}`}
             sub={`$${totalCollected.toLocaleString()} cobrado`}
-            trend={14}
             sparkData={revenueByMonth}
             color="#16a34a"
             onClick={() => navigate('/projects')}
@@ -155,7 +148,6 @@ export default function Dashboard() {
             label="Proyectos activos"
             value={activeProjects.length}
             sub={`${activeProjects.filter(p => p.phase === 'publication').length} en publicación`}
-            trend={25}
             sparkData={projectsByMonth}
             onClick={() => navigate('/projects')}
           />
@@ -163,16 +155,14 @@ export default function Dashboard() {
             label="Clientes CRM"
             value={contacts.length}
             sub={`${companies.length} empresas`}
-            trend={8}
-            sparkData={[3, 4, 4, 5, 5, contacts.length]}
+            sparkData={contacts.length > 0 ? [0, 0, 0, 0, 0, contacts.length] : null}
             onClick={() => navigate('/clients')}
           />
           <MetricCard
             label="Deals pipeline"
             value={`$${deals.reduce((s, d) => s + (d.amount || 0), 0).toLocaleString()}`}
             sub={`${deals.length} deals activos`}
-            trend={-3}
-            sparkData={[12000, 18000, 14000, 22000, 19000, deals.reduce((s, d) => s + (d.amount || 0), 0)]}
+            sparkData={deals.length > 0 ? [0, 0, 0, 0, 0, deals.reduce((s, d) => s + (d.amount || 0), 0)] : null}
             onClick={() => navigate('/clients')}
           />
         </div>
@@ -188,6 +178,12 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="divide-y divide-border/50">
+              {tasks.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                  <CheckCircle2 className="w-6 h-6 mb-1.5 opacity-30" />
+                  <p className="text-xs">Sin tareas. Agrega una abajo.</p>
+                </div>
+              )}
               {tasks.map(t => (
                 <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-accent/30 transition-colors">
                   <button onClick={() => toggleTask(t.id)} className="shrink-0">
@@ -286,21 +282,9 @@ export default function Dashboard() {
           <div className="px-5 py-4 border-b border-border">
             <p className="text-xs font-bold uppercase tracking-widest">Actividad reciente</p>
           </div>
-          <div className="divide-y divide-border/50">
-            {[
-              { icon: '💬', text: 'Nuevo mensaje de María Quispe — Fashion Co.', time: 'hace 12 min', action: '/messages' },
-              { icon: '📁', text: 'Proyecto "Tienda Moda Lima" avanzó a Diseño', time: 'hace 1h', action: '/projects' },
-              { icon: '✅', text: 'TechPe aprobó la fase de Desarrollo', time: 'hace 2h', action: '/projects' },
-              { icon: '💳', text: 'Pago de kick off recibido — Cevichería Mar', time: 'hace 3h', action: '/contracts' },
-              { icon: '👤', text: 'Nuevo contacto: Carlos Founders — Startup XYZ', time: 'hace 5h', action: '/clients' },
-            ].map((item, i) => (
-              <div key={i} onClick={() => navigate(item.action)}
-                className="flex items-center gap-4 px-5 py-3 hover:bg-accent/30 transition-colors cursor-pointer">
-                <span className="text-base shrink-0">{item.icon}</span>
-                <p className="text-xs flex-1">{item.text}</p>
-                <p className="text-[10px] text-muted-foreground shrink-0">{item.time}</p>
-              </div>
-            ))}
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+            <Clock className="w-7 h-7 mb-2 opacity-30" />
+            <p className="text-xs">La actividad aparecerá aquí conforme uses la plataforma</p>
           </div>
         </div>
 

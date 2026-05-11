@@ -45,7 +45,7 @@ function ColHeader({ col, onResize, onRename, onDelete, onEdit }) {
 
   return (
     <th ref={setNodeRef} style={style}
-      className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground bg-background border-b border-border whitespace-nowrap group">
+      className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/40 border-b border-border whitespace-nowrap group">
 
       <div className="flex items-center gap-1 min-w-0">
         {/* Column drag handle */}
@@ -116,12 +116,12 @@ function SortableRow({ id, cols, renderCell, selected, onSelect }) {
 
   return (
     <tr ref={setNodeRef} style={style} {...attributes}
-      className={`border-b border-border/50 transition-colors ${isDragging ? 'opacity-40 bg-accent' : 'hover:bg-accent/30'}`}>
-      <td className="px-3 py-2 w-10 shrink-0">
+      className={`border-b border-border/50 transition-colors ${isDragging ? 'opacity-40 bg-accent' : 'hover:bg-accent/40'}`}>
+      <td className="px-3 py-3 w-10 shrink-0">
         <Checkbox checked={selected} onCheckedChange={onSelect} />
       </td>
       {cols.map((col, i) => (
-        <td key={col.id} style={{ width: col.width, minWidth: col.width, maxWidth: col.width, overflow: 'hidden' }} className="px-3 py-2">
+        <td key={col.id} style={{ width: col.width, minWidth: col.width, maxWidth: col.width, overflow: 'hidden' }} className="px-3 py-3">
           <div className="flex items-center gap-1.5">
             {i === 0 && (
               <div {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground shrink-0 touch-none">
@@ -242,8 +242,8 @@ export default function CRMTable({
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleColDrag}>
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-20">
-              <tr>
-                <th className="w-10 px-3 py-2.5 bg-background border-b border-border">
+              <tr className="bg-muted/30">
+                <th className="w-10 px-3 py-3 bg-muted/40 border-b border-border">
                   <Checkbox checked={allSelected} onCheckedChange={onSelectAll} />
                 </th>
                 <SortableContext items={cols.map(c => c.id)} strategy={horizontalListSortingStrategy}>
@@ -275,13 +275,7 @@ export default function CRMTable({
         </DndContext>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-center gap-2 px-4 py-3 border-t border-border text-xs text-muted-foreground shrink-0">
-        <button className="hover:text-foreground px-1">‹ Prev</button>
-        <span className="bg-primary text-primary-foreground px-2.5 py-0.5 rounded text-xs">1</span>
-        <button className="hover:text-foreground px-1">Next ›</button>
-        <span className="ml-2">{orderedRows.length} registros</span>
-      </div>
+      <div className="px-4 py-2.5 border-t border-border text-[10px] text-muted-foreground">{orderedRows.length} registros</div>
 
       {/* Column editor — add new OR edit existing */}
       <ColDefEditor
