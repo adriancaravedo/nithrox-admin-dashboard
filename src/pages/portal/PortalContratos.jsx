@@ -110,8 +110,8 @@ function StatusBadge({ status }) {
 
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function PortalContratos() {
-  const { profile } = useAuth()
-  const { contracts, loading, signContract } = usePortalData(profile?.contact_id)
+  const { profile, user } = useAuth()
+  const { contracts, loading, signContract } = usePortalData(profile?.contact_id, user?.id)
   const [signingContract, setSigningContract] = useState(null)
 
   const handleSign = async (name) => {

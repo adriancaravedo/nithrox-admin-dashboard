@@ -116,20 +116,21 @@ function SortableRow({ id, cols, renderCell, selected, onSelect }) {
 
   return (
     <tr ref={setNodeRef} style={style} {...attributes}
-      className={`border-b border-border/50 transition-colors ${isDragging ? 'opacity-40 bg-accent' : 'hover:bg-accent/40'}`}>
-      <td className="px-3 py-3 w-10 shrink-0">
+      className={`group border-b border-border/50 transition-colors ${isDragging ? 'opacity-40 bg-accent' : 'hover:bg-accent/40'}`}>
+      {/* Checkbox column */}
+      <td className="px-3 py-3 w-10">
         <Checkbox checked={selected} onCheckedChange={onSelect} />
       </td>
-      {cols.map((col, i) => (
+      {/* Drag handle — dedicated column, visible on hover only */}
+      <td className="w-6 py-3 px-0">
+        <div {...listeners} className="cursor-grab text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity touch-none flex justify-center">
+          <GripVertical className="w-3.5 h-3.5" />
+        </div>
+      </td>
+      {/* Data columns */}
+      {cols.map((col) => (
         <td key={col.id} style={{ width: col.width, minWidth: col.width, maxWidth: col.width, overflow: 'hidden' }} className="px-3 py-3">
-          <div className="flex items-center gap-1.5">
-            {i === 0 && (
-              <div {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground shrink-0 touch-none">
-                <GripVertical className="w-3.5 h-3.5" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">{renderCell(col.id)}</div>
-          </div>
+          <div className="min-w-0">{renderCell(col.id)}</div>
         </td>
       ))}
     </tr>
@@ -246,6 +247,8 @@ export default function CRMTable({
                 <th className="w-10 px-3 py-3 bg-muted/40 border-b border-border">
                   <Checkbox checked={allSelected} onCheckedChange={onSelectAll} />
                 </th>
+                {/* Drag handle spacer */}
+                <th className="w-6 bg-muted/40 border-b border-border" />
                 <SortableContext items={cols.map(c => c.id)} strategy={horizontalListSortingStrategy}>
                   {cols.map(col => (
                     <ColHeader key={col.id} col={col}

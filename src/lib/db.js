@@ -52,11 +52,20 @@ export const db = {
       .select('*, contacts(*), companies(*), messages(*)')
       .eq('id', id)
       .single(),
-    forClient: (contactId) => supabase
-      .from('conversations')
-      .select('*, messages(*)')
-      .eq('contact_id', contactId)
-      .single(),
+    forClient: (contactId, userId) => {
+      if (contactId) {
+        return supabase
+          .from('conversations')
+          .select('*, messages(*)')
+          .eq('contact_id', contactId)
+          .maybeSingle()
+      }
+      return supabase
+        .from('conversations')
+        .select('*, messages(*)')
+        .eq('user_id', userId)
+        .maybeSingle()
+    },
     update: (id, data) => supabase.from('conversations').update(data).eq('id', id).select().single(),
     delete: (id) => supabase.from('conversations').delete().eq('id', id),
     updateLastMessage: (id, text) => supabase

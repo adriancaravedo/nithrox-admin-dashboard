@@ -133,9 +133,9 @@ function OnboardingWizard({ contactId, onDone }) {
 }
 
 export default function PortalDashboard() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const navigate = useNavigate()
-  const { project, contracts, loading } = usePortalData(profile?.contact_id)
+  const { project, contracts, loading } = usePortalData(profile?.contact_id, user?.id)
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('ntx_onboarded_' + profile?.contact_id))
 
   if (loading) {

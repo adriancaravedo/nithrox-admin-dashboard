@@ -134,7 +134,7 @@ export default function PortalMensajes() {
   const {
     conversation, loading, adminTyping, chatSettings,
     createConversation, sendMessage, uploadAndSend, uploadAndSendVoice, broadcastTyping,
-  } = usePortalData(profile?.contact_id)
+  } = usePortalData(profile?.contact_id, user?.id)
 
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)

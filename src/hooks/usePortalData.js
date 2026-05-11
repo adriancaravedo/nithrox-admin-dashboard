@@ -11,7 +11,7 @@ function fileToDataUrl(file) {
   })
 }
 
-export function usePortalData(contactId) {
+export function usePortalData(contactId, userId) {
   const [project, setProject] = useState(null)
   const [conversation, setConversation] = useState(null)
   const [contracts, setContracts] = useState([])
@@ -28,7 +28,7 @@ export function usePortalData(contactId) {
   useEffect(() => { convRef.current = conversation }, [conversation])
 
   useEffect(() => {
-    if (!contactId) { setLoading(false); return }
+    if (!contactId && !userId) { setLoading(false); return }
     const load = async () => {
       setLoading(true)
       try {
@@ -40,8 +40,8 @@ export function usePortalData(contactId) {
           { data: mtg },
           { data: settingsRow },
         ] = await Promise.all([
-          db.projects.forClient(contactId),
-          db.conversations.forClient(contactId),
+          contactId ? db.projects.forClient(contactId) : Promise.resolve({ data: null }),
+          db.conversations.forClient(contactId, userId),
           db.contracts.forClient(contactId),
           db.proposals.forClient(contactId),
           db.meetings.forContact(contactId),
@@ -136,13 +136,16 @@ export function usePortalData(contactId) {
     return data
   }
 
-  const createConversation = async (userId) => {
-    if (!userId) return null
-    const { data: conv, error } = await db.conversations.create({
-      contact_id: contactId,
+  const createConversation = async (uid) => {
+    const effectiveUserId = uid || userId
+    if (!effectiveUserId && !contactId) return null
+    const payload = {
+      contact_id: contactId || null,
+      user_id: contactId ? null : effectiveUserId,
       last_message: '',
       last_at: new Date().toISOString(),
-    })
+    }
+    const { data: conv, error } = await db.conversations.create(payload)
     if (error) { console.error('createConversation:', error); return null }
     if (conv) {
       setConversation({ ...conv, messages: [] })
