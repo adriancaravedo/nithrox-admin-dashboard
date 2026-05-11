@@ -166,7 +166,10 @@ export default function CompaniesTab({ showAddSection, onCloseAddSection }) {
             style={{ backgroundColor: company.avatar_color }}>
             {getInitials(company.name)}
           </div>
-          <span className="text-sm font-semibold truncate flex-1">{company.name}</span>
+          <button onClick={() => navigate(`/clients/companies/${company.id}`)}
+            className="text-sm font-semibold truncate flex-1 text-left hover:underline">
+            {company.name}
+          </button>
           <div className="hidden group-hover/row:flex items-center gap-0.5 shrink-0">
             <button title="Ver empresa" onClick={() => navigate(`/clients/companies/${company.id}`)}
               className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
