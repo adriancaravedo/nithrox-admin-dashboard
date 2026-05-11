@@ -11,6 +11,7 @@ const NAV = [
   { to: '/portal/proyecto',    label: 'Mi proyecto',  icon: FolderKanban },
   { to: '/portal/pagos',       label: 'Pagos',        icon: CreditCard },
   { to: '/portal/documentos',  label: 'Documentos',   icon: FileText },
+  { to: '/portal/contratos',   label: 'Contratos',    icon: FileText },
   { to: '/portal/reuniones',   label: 'Reuniones',    icon: Calendar },
   { to: '/portal/mensajes',    label: 'Mensajes',     icon: MessageSquare },
 ]
