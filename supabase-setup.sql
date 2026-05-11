@@ -374,9 +374,17 @@ create policy "admin_read_all_profiles" on profiles for select using (is_admin()
 -- Realtime
 -- Enable realtime on tables that need live updates
 -- ============================================================
-alter publication supabase_realtime add table messages;
-alter publication supabase_realtime add table notifications;
-alter publication supabase_realtime add table conversations;
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'messages') then
+    alter publication supabase_realtime add table messages;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'notifications') then
+    alter publication supabase_realtime add table notifications;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'conversations') then
+    alter publication supabase_realtime add table conversations;
+  end if;
+end $$;
 
 -- ============================================================
 -- Messages v2 — Run these ALTER TABLE statements if tables exist
@@ -443,7 +451,11 @@ drop policy if exists "client_read_meetings" on meetings;
 create policy "client_read_meetings" on meetings for select using (contact_id = my_contact_id());
 drop policy if exists "client_confirm_meeting" on meetings;
 create policy "client_confirm_meeting" on meetings for update using (contact_id = my_contact_id()) with check (true);
-alter publication supabase_realtime add table meetings;
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'meetings') then
+    alter publication supabase_realtime add table meetings;
+  end if;
+end $$;
 
 -- Allow client to start their own conversation (contact support)
 drop policy if exists "client_create_own_conversation" on conversations;
