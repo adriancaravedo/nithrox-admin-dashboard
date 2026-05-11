@@ -322,6 +322,16 @@ export const useStore = create((set, get) => ({
     return shaped
   },
 
+  fetchAndAppendConversation: async (convId) => {
+    const { data } = await db.conversations.get(convId)
+    if (!data) return
+    const shaped = shapeConversation(data)
+    set(s => {
+      if (s.messages.find(m => m.id === convId)) return s
+      return { messages: [shaped, ...s.messages] }
+    })
+  },
+
   appendRealtimeMessage: (conversationId, msg) => {
     set(s => ({
       messages: s.messages.map(m => m.id === conversationId
