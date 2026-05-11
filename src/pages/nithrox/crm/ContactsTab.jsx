@@ -200,7 +200,10 @@ export default function ContactsTab({ showAddSection, onCloseAddSection }) {
             style={{ backgroundColor: contact.avatar_color }}>
             {getInitials(contact.name)}
           </div>
-          <span className="text-sm font-semibold truncate flex-1">{contact.name}</span>
+          <button onClick={() => navigate(`/clients/contacts/${contact.id}`)}
+            className="text-sm font-semibold truncate flex-1 text-left hover:underline">
+            {contact.name}
+          </button>
           {/* Hover quick actions */}
           <div className="hidden group-hover/row:flex items-center gap-0.5 shrink-0">
             <button title="Ver perfil" onClick={() => navigate(`/clients/contacts/${contact.id}`)}

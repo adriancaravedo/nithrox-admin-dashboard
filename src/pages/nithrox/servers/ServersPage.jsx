@@ -16,17 +16,30 @@ export default function ServersPage() {
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.name || !form.ip) return
-    addServer({
-      ...form,
-      status: 'online', cpu: 0, ram: 0, disk: 0, sites: 0,
-      monthly_cost: parseFloat(form.monthly_cost) || 0,
-      ssl_expiry: '', clients: form.company_id ? [form.company_id] : [],
-    })
-    setForm({ name: '', type: 'Shared', ip: '', plan: '', provider: 'Hostinger', monthly_cost: '', currency: 'USD', cpanel_url: '', domain: '', company_id: '' })
-    setShowNew(false)
-    toast.success('Servidor agregado')
+    try {
+      const result = await addServer({
+        name: form.name,
+        type: form.type,
+        ip: form.ip,
+        plan: form.plan || null,
+        provider: form.provider,
+        domain: form.domain || null,
+        cpanel_url: form.cpanel_url || null,
+        monthly_cost: parseFloat(form.monthly_cost) || 0,
+        currency: form.currency,
+        status: 'online', cpu: 0, ram: 0, disk: 0, sites: 0,
+        ssl_expiry: null,
+        client_ids: form.company_id ? [form.company_id] : [],
+      })
+      if (!result) throw new Error('Sin respuesta del servidor')
+      setForm({ name: '', type: 'Shared', ip: '', plan: '', provider: 'Hostinger', monthly_cost: '', currency: 'USD', cpanel_url: '', domain: '', company_id: '' })
+      setShowNew(false)
+      toast.success('Servidor agregado')
+    } catch (err) {
+      toast.error(err?.message || 'Error al crear servidor')
+    }
   }
 
   const serversWithMeta = servers.map(sv => {

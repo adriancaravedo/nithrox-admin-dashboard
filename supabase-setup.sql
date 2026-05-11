@@ -33,9 +33,9 @@ create table if not exists companies (
   last_activity timestamptz default now()
 );
 
--- Run these if tables already exist:
--- alter table contacts add column if not exists custom_fields jsonb default '{}';
--- alter table companies add column if not exists custom_fields jsonb default '{}';
+-- Safe migrations (idempotent — run any time)
+alter table companies add column if not exists custom_fields jsonb default '{}';
+alter table contacts  add column if not exists custom_fields jsonb default '{}';
 alter table companies enable row level security;
 
 -- ── Contacts ─────────────────────────────────────────────────
@@ -285,7 +285,7 @@ create policy "admin_all_conversations" on conversations for all using (is_admin
 
 drop policy if exists "client_read_own_conversation" on conversations;
 create policy "client_read_own_conversation" on conversations for select using (
-  contact_id = my_contact_id()
+  contact_id = my_contact_id() OR user_id = auth.uid()
 );
 
 -- ── messages ─────────────────────────────────────────────────
@@ -295,14 +295,14 @@ create policy "admin_all_messages" on messages for all using (is_admin()) with c
 drop policy if exists "client_read_own_messages" on messages;
 create policy "client_read_own_messages" on messages for select using (
   conversation_id in (
-    select id from conversations where contact_id = my_contact_id()
+    select id from conversations where contact_id = my_contact_id() OR user_id = auth.uid()
   )
 );
 
 drop policy if exists "client_insert_own_messages" on messages;
 create policy "client_insert_own_messages" on messages for insert with check (
   conversation_id in (
-    select id from conversations where contact_id = my_contact_id()
+    select id from conversations where contact_id = my_contact_id() OR user_id = auth.uid()
   ) and from_role = 'client'
 );
 
@@ -406,7 +406,7 @@ alter table conversations add column if not exists allow_voice_notes  boolean de
 drop policy if exists "client_mark_read" on messages;
 create policy "client_mark_read" on messages for update
   using (
-    conversation_id in (select id from conversations where contact_id = my_contact_id())
+    conversation_id in (select id from conversations where contact_id = my_contact_id() OR user_id = auth.uid())
     and from_role = 'admin'
   )
   with check (true);
@@ -458,9 +458,13 @@ do $$ begin
 end $$;
 
 -- Allow client to start their own conversation (contact support)
+-- Works for both linked contacts (contact_id) and unlinked portal users (user_id)
+alter table conversations add column if not exists user_id uuid references auth.users(id) on delete set null;
+
 drop policy if exists "client_create_own_conversation" on conversations;
 create policy "client_create_own_conversation" on conversations for insert with check (
   contact_id = my_contact_id()
+  OR (user_id = auth.uid() AND contact_id IS NULL)
 );
 
 -- ============================================================
