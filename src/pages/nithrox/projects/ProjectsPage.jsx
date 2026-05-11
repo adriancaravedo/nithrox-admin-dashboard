@@ -169,7 +169,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden bg-zinc-50">
       <Topbar
-        title="PROYECTOS"
+        title="WEBSITES"
         actions={
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-full hover:bg-zinc-700 uppercase tracking-wider transition-colors">
