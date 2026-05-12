@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Geist', 'sans-serif'],
-        mono: ['Geist Mono', 'monospace'],
+        sans: ['Geist Variable', 'sans-serif'],
+        mono: ['Geist Mono Variable', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',
