@@ -112,24 +112,76 @@ export default function SettingsPage() {
             </div>
           )}
           {activeTab==='api' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div><h2 className="text-base font-semibold">API Keys</h2></div>
-              {[
-                {key:'claude',label:'Claude API (Anthropic)',sub:'Usado por el Converter Figma → Código',placeholder:'sk-ant-api03-...',link:'https://console.anthropic.com'},
-                {key:'figma',label:'Figma Personal Access Token',sub:'Para leer diseños desde Figma',placeholder:'figd_...',link:'https://figma.com/settings'},
-                {key:'supabase',label:'Supabase Anon Key',sub:'Clave pública de la base de datos',placeholder:'eyJ...',link:'https://supabase.com/dashboard'},
-              ].map(api=>(
-                <div key={api.key} className="bg-background border border-border rounded-lg p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div><h3 className="text-sm font-semibold">{api.label}</h3><p className="text-xs text-muted-foreground">{api.sub}</p></div>
-                    <a href={api.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Obtener →</a>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input type="password" value={apiKeys[api.key]} onChange={e=>setApiKeys(p=>({...p,[api.key]:e.target.value}))} placeholder={api.placeholder} className="flex-1 text-xs font-mono"/>
-                    <Button size="sm">Guardar</Button>
-                  </div>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Plataforma</p>
+                <div className="space-y-3">
+                  {[
+                    {key:'claude',label:'Claude API (Anthropic)',sub:'Usado por el Converter Figma → Código',placeholder:'sk-ant-api03-...',link:'https://console.anthropic.com'},
+                    {key:'figma',label:'Figma Personal Access Token',sub:'Para leer diseños desde Figma',placeholder:'figd_...',link:'https://figma.com/settings'},
+                    {key:'supabase',label:'Supabase Anon Key',sub:'Clave pública de la base de datos',placeholder:'eyJ...',link:'https://supabase.com/dashboard'},
+                  ].map(api=>(
+                    <div key={api.key} className="bg-background border border-border rounded-lg p-4 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div><h3 className="text-sm font-semibold">{api.label}</h3><p className="text-xs text-muted-foreground">{api.sub}</p></div>
+                        <a href={api.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Obtener →</a>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input type="password" value={apiKeys[api.key]||''} onChange={e=>setApiKeys(p=>({...p,[api.key]:e.target.value}))} placeholder={api.placeholder} className="flex-1 text-xs font-mono"/>
+                        <Button size="sm" onClick={saveApiKeys}>Guardar</Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Redes Sociales</p>
+                <div className="space-y-3">
+                  {[
+                    {key:'facebook_token',  label:'Facebook Page Access Token',  sub:'Meta for Developers → App → Page token',       placeholder:'EAAxxxxxxxxxxxxxxx', link:'https://developers.facebook.com'},
+                    {key:'instagram_token', label:'Instagram Access Token',       sub:'Misma app de Meta, permiso instagram_basic',    placeholder:'IGQxxxxxxxxxxxxxxx', link:'https://developers.facebook.com'},
+                    {key:'twitter_token',   label:'X (Twitter) Bearer Token',     sub:'Twitter Developer Portal → API v2',            placeholder:'AAAAAAAAAAAAAxx',     link:'https://developer.twitter.com'},
+                    {key:'youtube_token',   label:'YouTube Data API Key',         sub:'Google Cloud Console → APIs → YouTube Data v3', placeholder:'AIzaSyxxxxxxxxxx',    link:'https://console.cloud.google.com'},
+                    {key:'linkedin_token',  label:'LinkedIn Access Token',        sub:'LinkedIn Developer Portal → OAuth 2.0',        placeholder:'AQxxxxxxxxxxxxxxx', link:'https://developer.linkedin.com'},
+                    {key:'tiktok_token',    label:'TikTok Access Token',          sub:'TikTok for Developers → App',                  placeholder:'act.xxxxxxxx',       link:'https://developers.tiktok.com'},
+                  ].map(api=>(
+                    <div key={api.key} className="bg-background border border-border rounded-lg p-4 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div><h3 className="text-sm font-semibold">{api.label}</h3><p className="text-xs text-muted-foreground">{api.sub}</p></div>
+                        <a href={api.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Obtener →</a>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input type="password" value={apiKeys[api.key]||''} onChange={e=>setApiKeys(p=>({...p,[api.key]:e.target.value}))} placeholder={api.placeholder} className="flex-1 text-xs font-mono"/>
+                        <Button size="sm" onClick={saveApiKeys}>Guardar</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Email Marketing</p>
+                <div className="space-y-3">
+                  {[
+                    {key:'resend_key',    label:'Resend API Key',    sub:'Proveedor de email transaccional (recomendado)',  placeholder:'re_xxxxxxxxxxxxxxx', link:'https://resend.com'},
+                    {key:'sendgrid_key',  label:'SendGrid API Key',  sub:'Alternativa a Resend para envío masivo',          placeholder:'SG.xxxxxxxxxxxxxxx', link:'https://sendgrid.com'},
+                  ].map(api=>(
+                    <div key={api.key} className="bg-background border border-border rounded-lg p-4 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div><h3 className="text-sm font-semibold">{api.label}</h3><p className="text-xs text-muted-foreground">{api.sub}</p></div>
+                        <a href={api.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Obtener →</a>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input type="password" value={apiKeys[api.key]||''} onChange={e=>setApiKeys(p=>({...p,[api.key]:e.target.value}))} placeholder={api.placeholder} className="flex-1 text-xs font-mono"/>
+                        <Button size="sm" onClick={saveApiKeys}>Guardar</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
           {activeTab==='billing' && (
