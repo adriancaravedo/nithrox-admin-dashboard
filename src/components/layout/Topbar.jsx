@@ -2,7 +2,7 @@ import { PanelLeft, Moon, Sun, Search, Menu } from 'lucide-react'
 import { useSidebar } from './Sidebar'
 import { useTheme } from '../../context/ThemeContext'
 
-export default function Topbar({ title, actions }) {
+export default function Topbar({ title, actions, leftContent, hidePanelToggle }) {
   const { toggle, setMobileOpen } = useSidebar()
   const { dark, toggle: toggleDark } = useTheme()
 
@@ -18,15 +18,21 @@ export default function Topbar({ title, actions }) {
         </button>
 
         {/* Desktop collapse toggle */}
-        <button
-          onClick={toggle}
-          className="hidden lg:flex p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-          title="Colapsar menú (⌘B)"
-        >
-          <PanelLeft className="w-4 h-4" />
-        </button>
+        {!hidePanelToggle && (
+          <button
+            onClick={toggle}
+            className="hidden lg:flex p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+            title="Colapsar menú (⌘B)"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
 
         <span className="text-sm font-bold tracking-tight uppercase truncate">{title}</span>
+
+        {leftContent && (
+          <div className="hidden lg:flex items-center ml-1">{leftContent}</div>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
