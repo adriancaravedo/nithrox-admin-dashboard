@@ -45,7 +45,6 @@ export default function ClientsPage() {
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar
         title="Clientes"
-        hidePanelToggle
         leftContent={tabSelector}
         actions={
           <div className="flex items-center gap-2">
