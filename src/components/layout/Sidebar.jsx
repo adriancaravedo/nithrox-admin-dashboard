@@ -8,7 +8,7 @@ import {
   Tag, CreditCard, Monitor, Bot, Server, Globe,
   Zap, ClipboardList, FileCheck, Calendar, FileText,
   Receipt, Bell, Settings, LogOut, ChevronDown,
-  ChevronRight, Menu, X
+  ChevronsUpDown, Menu, X
 } from 'lucide-react'
 
 // ── Navigation structure ──────────────────────────────────────
@@ -134,15 +134,15 @@ export default function Sidebar() {
               <X className="w-4 h-4" />
             </button>
             {/* Desktop collapse */}
-            <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground">
-              <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+            <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors">
+              <ChevronsUpDown className="w-3.5 h-3.5" />
             </button>
           </>
         )}
 
         {isCollapsed && (
-          <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground absolute right-1 top-5">
-            <ChevronRight className="w-3 h-3" />
+          <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors absolute right-1 top-5">
+            <ChevronsUpDown className="w-3 h-3" />
           </button>
         )}
       </div>

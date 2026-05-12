@@ -107,8 +107,10 @@ function ColHeader({ col, onResize, onRename, onDelete, onEdit, sortCol, sortDir
 function Row({ cols, rowId, renderCell, selected, onSelect }) {
   return (
     <tr className="group border-b border-border/50 hover:bg-[#f8f9fa] transition-colors">
-      <td className="px-3 py-2.5 w-10">
-        <Checkbox checked={selected} onCheckedChange={onSelect} />
+      <td className="w-10 px-3 py-2.5">
+        <div className="flex items-center justify-center">
+          <Checkbox checked={selected} onCheckedChange={onSelect} />
+        </div>
       </td>
       {cols.map((col) => (
         <td key={col.id}
@@ -218,8 +220,10 @@ export default function CRMTable({
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-20">
               <tr>
-                <th className="w-10 px-3 py-2.5 bg-[#f8f8f9] border-b border-r border-border">
-                  <Checkbox checked={allSelected} onCheckedChange={onSelectAll} />
+                <th className="w-10 px-3 py-2.5 bg-[#f8f8f9] border-b border-border">
+                  <div className="flex items-center justify-center">
+                    <Checkbox checked={allSelected} onCheckedChange={onSelectAll} />
+                  </div>
                 </th>
                 <SortableContext items={cols.map(c => c.id)} strategy={horizontalListSortingStrategy}>
                   {cols.map(col => (
