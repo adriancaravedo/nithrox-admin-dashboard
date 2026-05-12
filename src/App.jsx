@@ -46,6 +46,9 @@ import ProposalsPage from './pages/nithrox/proposals/ProposalsPage'
 import AgendaPage from './pages/nithrox/agenda/AgendaPage'
 import ContractsPage from './pages/nithrox/contracts/ContractsPage'
 import InvoicesPage from './pages/nithrox/invoices/InvoicesPage'
+import SocialPage from './pages/nithrox/social/SocialPage'
+import EmailMarketingPage from './pages/nithrox/email/EmailMarketingPage'
+import EmployeesPage from './pages/nithrox/employees/EmployeesPage'
 
 function Loading() {
   return (
@@ -83,7 +86,7 @@ export default function App() {
         <AuthProvider>
           <DataProvider>
             <Toaster position="bottom-right"
-              toastOptions={{ style: { fontFamily: 'Geist Mono, monospace', fontSize: '13px', borderRadius: '12px' } }} />
+              toastOptions={{ style: { fontFamily: 'Geist Variable, sans-serif', fontSize: '13px', borderRadius: '12px' } }} />
             <Routes>
               {/* Public */}
               <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
@@ -105,6 +108,7 @@ export default function App() {
 
                 {/* Core */}
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
 
@@ -130,6 +134,8 @@ export default function App() {
                 <Route path="/domains" element={<DomainsPage />} />
 
                 {/* Herramientas */}
+                <Route path="/social" element={<SocialPage />} />
+                <Route path="/email-marketing" element={<EmailMarketingPage />} />
                 <Route path="/converter" element={<ConverterPage />} />
                 <Route path="/forms" element={<FormsPage />} />
                 <Route path="/proposals" element={<ProposalsPage />} />

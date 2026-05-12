@@ -8,7 +8,8 @@ import {
   Tag, CreditCard, Monitor, Bot, Server, Globe,
   Zap, ClipboardList, FileCheck, Calendar, FileText,
   Receipt, Bell, Settings, LogOut, ChevronDown,
-  ChevronsUpDown, Menu, X
+  ChevronsUpDown, Menu, X, UserRound,
+  Share2, Mail
 } from 'lucide-react'
 
 // ── Navigation structure ──────────────────────────────────────
@@ -16,6 +17,7 @@ const NAV_GROUPS = [
   {
     items: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/employees', icon: UserRound,       label: 'Empleados' },
     ],
   },
   {
@@ -40,12 +42,14 @@ const NAV_GROUPS = [
   {
     section: 'HERRAMIENTAS',
     items: [
-      { to: '/converter',  icon: Zap,          label: 'NTX Convertidor' },
-      { to: '/forms',      icon: ClipboardList, label: 'Formularios' },
-      { to: '/proposals',  icon: FileCheck,    label: 'Propuestas' },
-      { to: '/agenda',     icon: Calendar,     label: 'Agenda' },
-      { to: '/contracts',  icon: FileText,     label: 'Contratos' },
-      { to: '/invoices',   icon: Receipt,      label: 'Facturas' },
+      { to: '/social',         icon: Share2,       label: 'Redes Sociales' },
+      { to: '/email-marketing', icon: Mail,        label: 'Email Marketing' },
+      { to: '/converter',      icon: Zap,          label: 'NTX Convertidor' },
+      { to: '/forms',          icon: ClipboardList, label: 'Formularios' },
+      { to: '/proposals',      icon: FileCheck,    label: 'Propuestas' },
+      { to: '/agenda',         icon: Calendar,     label: 'Agenda' },
+      { to: '/contracts',      icon: FileText,     label: 'Contratos' },
+      { to: '/invoices',       icon: Receipt,      label: 'Facturas' },
     ],
   },
 ]

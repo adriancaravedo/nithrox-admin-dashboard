@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react'
 import { useStore } from '../../../stores/useStore'
 import { toast } from 'sonner'
+import Topbar from '../../../components/layout/Topbar'
+import { Button } from '../../../components/ui/button'
 import {
   FolderOpen, Folder, Search, Upload, Trash2, Eye,
-  Plus, ChevronRight, ChevronDown, Building2, File
+  Plus, ChevronRight, ChevronDown, Building2, Pencil, X
 } from 'lucide-react'
 
 // Subcarpetas estándar por cliente
@@ -40,11 +42,13 @@ function formatSize(bytes) {
 }
 
 export default function DocumentsPage() {
-  const { companies, documents, addDocument, deleteDocument } = useStore()
+  const { companies, documents, addDocument, deleteDocument, updateDocument } = useStore()
   const [expandedCompany, setExpandedCompany] = useState(null)
   const [selectedPath, setSelectedPath] = useState({ companyId: null, subfolderId: null })
   const [dragOver, setDragOver] = useState(false)
   const [search, setSearch] = useState('')
+  const [renaming, setRenaming] = useState(null)
+  const [renameVal, setRenameVal] = useState('')
   const uploadRef = useRef()
 
   const currentCompanyId = selectedPath.companyId
@@ -115,13 +119,39 @@ export default function DocumentsPage() {
   const totalClients = companies.filter(c => docsForCompany(c.id) > 0).length
   const totalMB = (documents.reduce((s, d) => s + (d.size_bytes || 0), 0) / (1024 * 1024)).toFixed(1)
 
+  const startRename = (doc) => { setRenaming(doc.id); setRenameVal(doc.name) }
+  const commitRename = (doc) => {
+    if (renameVal.trim() && renameVal !== doc.name) {
+      updateDocument?.(doc.id, { name: renameVal.trim() })
+      toast.success('Archivo renombrado')
+    }
+    setRenaming(null)
+  }
+
+  const totalSize = documents.reduce((s, d) => s + (d.size_bytes || 0), 0)
+  const usedMB = (totalSize / (1024 * 1024)).toFixed(1)
+  const limitMB = 1024
+  const usedPct = Math.min(100, (totalSize / (limitMB * 1024 * 1024)) * 100).toFixed(1)
+
   return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <Topbar title="Documentos"
+        actions={
+          currentSubfolderId ? (
+            <Button size="sm" onClick={() => uploadRef.current?.click()} className="text-xs rounded-full px-4">
+              <Upload className="w-3.5 h-3.5 mr-1.5" /> Subir archivo
+            </Button>
+          ) : null
+        }
+      />
+
     <div
-      className="flex flex-col h-full overflow-hidden"
+      className="flex-1 overflow-hidden p-4"
       onDragOver={e => { e.preventDefault(); if (currentSubfolderId) setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
+    <div className="h-full rounded-xl border border-border bg-background overflow-hidden flex flex-col shadow-sm">
       {/* Drop zone overlay */}
       {dragOver && (
         <div className="absolute inset-0 z-50 bg-primary/10 border-4 border-dashed border-primary flex items-center justify-center pointer-events-none">
@@ -222,34 +252,13 @@ export default function DocumentsPage() {
         <div className="flex-1 overflow-hidden flex flex-col">
           {currentSubfolderId ? (
             <>
-              {/* Topbar strip */}
-              <div className="flex items-center gap-3 px-5 py-3 border-b border-border shrink-0">
-                {/* Breadcrumb */}
-                <div className="flex items-center gap-1 text-xs text-muted-foreground flex-1 min-w-0">
-                  <span className="font-semibold text-foreground truncate">{currentCompany?.name}</span>
-                  <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">
-                    {DEFAULT_SUBFOLDERS.find(s => s.id === currentSubfolderId)?.name}
-                  </span>
-                </div>
-
-                {/* Upload button */}
-                <button
-                  onClick={() => uploadRef.current?.click()}
-                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-primary text-primary-foreground rounded-full hover:bg-primary/90 uppercase tracking-wider shrink-0"
-                >
-                  <Upload className="w-3.5 h-3.5" /> Subir archivo
-                </button>
-
-                {/* Hidden file input */}
-                <input
-                  ref={uploadRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={e => handleUpload(e.target.files)}
-                />
+              {/* Breadcrumb strip */}
+              <div className="flex items-center gap-1 text-xs text-muted-foreground px-5 py-3 border-b border-border shrink-0">
+                <span className="font-semibold text-foreground truncate">{currentCompany?.name}</span>
+                <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{DEFAULT_SUBFOLDERS.find(s => s.id === currentSubfolderId)?.name}</span>
               </div>
+              <input ref={uploadRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
 
               {/* File grid / empty state */}
               <div className="flex-1 overflow-y-auto">
@@ -279,25 +288,30 @@ export default function DocumentsPage() {
                           {/* Actions overlay */}
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             {doc.url && (
-                              <a
-                                href={doc.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
-                              >
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                                className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors">
                                 <Eye className="w-4 h-4 text-white" />
                               </a>
                             )}
-                            <button
-                              onClick={() => { deleteDocument(doc.id); toast.success('Archivo eliminado') }}
-                              className="p-2 bg-white/20 rounded-full hover:bg-red-500/80 transition-colors"
-                            >
+                            <button onClick={() => startRename(doc)}
+                              className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors">
+                              <Pencil className="w-4 h-4 text-white" />
+                            </button>
+                            <button onClick={() => { deleteDocument(doc.id); toast.success('Archivo eliminado') }}
+                              className="p-2 bg-white/20 rounded-full hover:bg-red-500/80 transition-colors">
                               <Trash2 className="w-4 h-4 text-white" />
                             </button>
                           </div>
                         </div>
                         <div className="p-2.5">
-                          <p className="text-xs font-medium truncate" title={doc.name}>{doc.name}</p>
+                          {renaming === doc.id ? (
+                            <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                              onBlur={() => commitRename(doc)}
+                              onKeyDown={e => { if (e.key === 'Enter') commitRename(doc); if (e.key === 'Escape') setRenaming(null) }}
+                              className="w-full text-xs border border-primary rounded px-1 outline-none" />
+                          ) : (
+                            <p className="text-xs font-medium truncate" title={doc.name}>{doc.name}</p>
+                          )}
                           <p className="text-[10px] text-muted-foreground mt-0.5">{formatSize(doc.size_bytes)}</p>
                         </div>
                       </div>
@@ -315,6 +329,17 @@ export default function DocumentsPage() {
           )}
         </div>
       </div>
+
+      {/* Storage bar */}
+      <div className="shrink-0 border-t border-border px-4 py-2 flex items-center gap-3">
+        <span className="text-[10px] text-muted-foreground">Almacenamiento</span>
+        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${usedPct}%` }} />
+        </div>
+        <span className="text-[10px] text-muted-foreground tabular-nums">{usedMB} MB / {limitMB} GB</span>
+      </div>
+    </div>
+    </div>
     </div>
   )
 }
