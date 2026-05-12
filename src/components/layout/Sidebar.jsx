@@ -133,17 +133,11 @@ export default function Sidebar() {
             <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
-            {/* Desktop collapse */}
-            <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors">
+            {/* Business switcher */}
+            <button title="Cambiar negocio" className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors">
               <ChevronsUpDown className="w-3.5 h-3.5" />
             </button>
           </>
-        )}
-
-        {isCollapsed && (
-          <button onClick={toggle} className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors absolute right-1 top-5">
-            <ChevronsUpDown className="w-3 h-3" />
-          </button>
         )}
       </div>
 
