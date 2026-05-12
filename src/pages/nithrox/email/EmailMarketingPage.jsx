@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, lazy, Suspense } from 'react'
 import Topbar from '../../../components/layout/Topbar'
 import { Button } from '../../../components/ui/button'
-import EmailEditor from 'react-email-editor'
+
+const EmailEditor = lazy(() => import('react-email-editor'))
 import {
   Plus, ArrowLeft, Send, Download, Eye,
   BarChart2, Mail, Users, MousePointerClick,
@@ -143,17 +144,23 @@ export default function EmailMarketingPage() {
 
         {/* Unlayer editor — takes all remaining height */}
         <div className="flex-1 overflow-hidden">
-          <EmailEditor
-            ref={editorRef}
-            onLoad={onEditorLoad}
-            style={{ height: '100%', width: '100%' }}
-            options={{
-              version: 'latest',
-              appearance: { theme: 'modern_light' },
-              locale: 'es-ES',
-              features: { textEditor: { spellChecker: true } },
-            }}
-          />
+          <Suspense fallback={
+            <div className="flex-1 flex items-center justify-center h-full text-muted-foreground text-sm">
+              Cargando editor...
+            </div>
+          }>
+            <EmailEditor
+              ref={editorRef}
+              onLoad={onEditorLoad}
+              style={{ height: '100%', width: '100%' }}
+              options={{
+                version: 'latest',
+                appearance: { theme: 'modern_light' },
+                locale: 'es-ES',
+                features: { textEditor: { spellChecker: true } },
+              }}
+            />
+          </Suspense>
         </div>
       </div>
     )
