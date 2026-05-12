@@ -1,7 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
-import { formatRelative, getInitials } from '../../../lib/utils'
+import { getInitials } from '../../../lib/utils'
+
+const formatCRMDate = (d) => {
+  if (!d) return '—'
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(d))
+}
 import { loadState } from '../../../lib/persist'
 import CRMTable from '../../../components/shared/CRMTable'
 import { Trash2, X, Mail, Phone, MessageSquare, ExternalLink, Pencil, Eye } from 'lucide-react'
@@ -263,7 +268,7 @@ export default function ContactsTab({ showAddSection, onCloseAddSection }) {
         return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cls}`}>{status}</span>
       }
 
-      case 'created_at': return <span className="text-xs text-muted-foreground">{formatRelative(contact.created_at)}</span>
+      case 'created_at': return <span className="text-xs text-muted-foreground">{formatCRMDate(contact.created_at)}</span>
 
       default: {
         const savedCols = loadState(COL_DEFS_KEY_CONTACTS, [])

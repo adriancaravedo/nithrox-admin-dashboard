@@ -1,7 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
-import { formatRelative, getInitials } from '../../../lib/utils'
+import { getInitials } from '../../../lib/utils'
+
+const formatCRMDate = (d) => {
+  if (!d) return '—'
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(d))
+}
 import { loadState } from '../../../lib/persist'
 import CRMTable from '../../../components/shared/CRMTable'
 import { Trash2, X, Phone, MessageSquare, ExternalLink, Pencil, Eye, Building2 } from 'lucide-react'
@@ -205,7 +210,7 @@ export default function CompaniesTab({ showAddSection, onCloseAddSection }) {
       }
 
       case 'last_activity':
-      case 'created_at': return <span className="text-xs text-muted-foreground">{formatRelative(company[colId])}</span>
+      case 'created_at': return <span className="text-xs text-muted-foreground">{formatCRMDate(company[colId])}</span>
 
       default: {
         if (colId.startsWith('col_')) {
