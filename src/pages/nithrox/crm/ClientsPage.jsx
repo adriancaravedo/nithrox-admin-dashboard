@@ -12,28 +12,47 @@ const TABS = [
   { id: 'deals', label: 'Negocios' },
 ]
 
+const ADD_LABELS = {
+  contacts: '+ Agregar Contacto',
+  companies: '+ Agregar Empresa',
+  deals: '+ Agregar Deal',
+}
+
 export default function ClientsPage() {
   const [activeTab, setActiveTab] = useState('contacts')
   const [showAdd, setShowAdd] = useState(false)
   const [showAddSection, setShowAddSection] = useState(false)
 
-  const ADD_LABELS = { contacts: '+ Agregar Contacto', companies: '+ Agregar Empresa', deals: '+ Agregar Deal' }
+  const tabSelector = (
+    <div className="flex items-center border border-border rounded-lg overflow-hidden bg-muted/30">
+      {TABS.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`px-3 py-1 text-xs font-medium transition-colors ${
+            activeTab === tab.id
+              ? 'bg-foreground text-background'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar
         title="Clientes"
+        hidePanelToggle
+        leftContent={tabSelector}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => setShowAdd(true)} className="text-xs rounded-full px-4">
               {ADD_LABELS[activeTab]}
             </Button>
-            {(activeTab === 'contacts' || activeTab === 'companies') && (
-              <Button size="sm" variant="outline" className="text-xs rounded-full px-4" onClick={() => setShowAddSection(true)}>
-                + Agregar Sección
-              </Button>
-            )}
-            {activeTab === 'deals' && (
+            {(activeTab === 'contacts' || activeTab === 'companies' || activeTab === 'deals') && (
               <Button size="sm" variant="outline" className="text-xs rounded-full px-4" onClick={() => setShowAddSection(true)}>
                 + Agregar Sección
               </Button>
@@ -42,26 +61,14 @@ export default function ClientsPage() {
         }
       />
 
-      {/* Tabs row */}
-      <div className="flex items-center border-b border-border px-4">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-foreground text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Content with padding */}
+      <div className="flex-1 overflow-hidden p-4">
+        <div className="h-full rounded-xl border border-border bg-background overflow-hidden flex flex-col shadow-sm">
+          {activeTab === 'contacts' && <ContactsTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
+          {activeTab === 'companies' && <CompaniesTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
+          {activeTab === 'deals' && <DealsTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
+        </div>
       </div>
-
-      {activeTab === 'contacts' && <ContactsTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
-      {activeTab === 'companies' && <CompaniesTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
-      {activeTab === 'deals' && <DealsTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
 
       {activeTab === 'contacts' && <AddContactDialog open={showAdd} onClose={() => setShowAdd(false)} />}
       {activeTab === 'companies' && <AddCompanyDialog open={showAdd} onClose={() => setShowAdd(false)} />}
