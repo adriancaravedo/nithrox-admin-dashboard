@@ -434,22 +434,62 @@ export const useStore = create((set, get) => ({
   forms: [],
 
   fetchForms: async () => {
+    let localForms = []
+    try { localForms = JSON.parse(localStorage.getItem('ntx_forms') || '[]') } catch {}
     const { data } = await db.forms.list()
-    if (data) set({ forms: data.map(f => ({ ...f, responses: f.form_responses || [] })) })
+    const remoteForms = data ? data.map(f => ({ ...f, responses: f.form_responses || [] })) : []
+    // Merge: remote forms take priority; local-only forms are appended
+    const remoteIds = new Set(remoteForms.map(f => f.id))
+    const localOnly = localForms.filter(f => !remoteIds.has(f.id))
+    set({ forms: [...remoteForms, ...localOnly] })
   },
 
   addForm: async (form) => {
     const { data } = await db.forms.create({ ...form, status: 'draft', views: 0 })
-    if (data) set(s => ({ forms: [...s.forms, { ...data, responses: [] }] }))
-    return data
+    if (data) {
+      set(s => ({ forms: [...s.forms, { ...data, responses: [] }] }))
+      return data
+    }
+    // Supabase unavailable — fall back to localStorage
+    const localForm = {
+      ...form,
+      id: `local_${Date.now()}`,
+      status: 'draft',
+      views: 0,
+      responses: [],
+      created_at: new Date().toISOString(),
+    }
+    set(s => ({ forms: [...s.forms, localForm] }))
+    try {
+      const stored = JSON.parse(localStorage.getItem('ntx_forms') || '[]')
+      localStorage.setItem('ntx_forms', JSON.stringify([...stored, localForm]))
+    } catch {}
+    return localForm
   },
 
   updateForm: async (id, updates) => {
+    if (String(id).startsWith('local_')) {
+      set(s => {
+        const updatedForms = s.forms.map(f => f.id === id ? { ...f, ...updates } : f)
+        try { localStorage.setItem('ntx_forms', JSON.stringify(updatedForms.filter(f => String(f.id).startsWith('local_')))) } catch {}
+        return { forms: updatedForms }
+      })
+      return
+    }
     const { data } = await db.forms.update(id, updates)
     if (data) set(s => ({ forms: s.forms.map(f => f.id === id ? { ...f, ...data } : f) }))
+    else set(s => ({ forms: s.forms.map(f => f.id === id ? { ...f, ...updates } : f) }))
   },
 
   deleteForm: async (id) => {
+    if (String(id).startsWith('local_')) {
+      set(s => {
+        const updatedForms = s.forms.filter(f => f.id !== id)
+        try { localStorage.setItem('ntx_forms', JSON.stringify(updatedForms.filter(f => String(f.id).startsWith('local_')))) } catch {}
+        return { forms: updatedForms }
+      })
+      return
+    }
     await db.forms.delete(id)
     set(s => ({ forms: s.forms.filter(f => f.id !== id) }))
   },
