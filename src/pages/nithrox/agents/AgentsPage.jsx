@@ -352,7 +352,8 @@ export default function AgentsPage() {
         </button>
       } />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm p-5">
         {/* Info banner */}
         <div className="bg-foreground text-background rounded-2xl p-5 mb-6 flex items-center gap-4">
           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
@@ -431,6 +432,7 @@ export default function AgentsPage() {
             })}
           </div>
         )}
+      </div>
       </div>
 
       {showNew && <NewAgentDialog onClose={() => setShowNew(false)} onCreate={addAgent} />}

@@ -507,28 +507,128 @@ export const useStore = create((set, get) => ({
     return data
   },
 
+  // ── Employees ─────────────────────────────────────────────────
+  employees: (() => { try { return JSON.parse(localStorage.getItem('ntx_employees') || '[]') } catch { return [] } })(),
+
+  fetchEmployees: async () => {
+    let local = []
+    try { local = JSON.parse(localStorage.getItem('ntx_employees') || '[]') } catch {}
+    const { data } = await db.employees.list()
+    if (data && data.length > 0) {
+      set({ employees: data })
+      localStorage.setItem('ntx_employees', JSON.stringify(data))
+    } else if (local.length > 0) {
+      set({ employees: local })
+    }
+  },
+
+  addEmployee: async (emp) => {
+    const { data } = await db.employees.create(emp)
+    if (data) {
+      set(s => {
+        const next = [...s.employees, data]
+        localStorage.setItem('ntx_employees', JSON.stringify(next))
+        return { employees: next }
+      })
+      return data
+    }
+    const local = { ...emp, id: `local_${Date.now()}`, created_at: new Date().toISOString() }
+    set(s => {
+      const next = [local, ...s.employees]
+      localStorage.setItem('ntx_employees', JSON.stringify(next))
+      return { employees: next }
+    })
+    return local
+  },
+
+  updateEmployee: async (id, updates) => {
+    if (!String(id).startsWith('local_')) {
+      const { data } = await db.employees.update(id, updates)
+      if (data) {
+        set(s => {
+          const next = s.employees.map(e => e.id === id ? data : e)
+          localStorage.setItem('ntx_employees', JSON.stringify(next))
+          return { employees: next }
+        })
+        return
+      }
+    }
+    set(s => {
+      const next = s.employees.map(e => e.id === id ? { ...e, ...updates } : e)
+      localStorage.setItem('ntx_employees', JSON.stringify(next))
+      return { employees: next }
+    })
+  },
+
+  deleteEmployee: async (id) => {
+    if (!String(id).startsWith('local_')) await db.employees.delete(id)
+    set(s => {
+      const next = s.employees.filter(e => e.id !== id)
+      localStorage.setItem('ntx_employees', JSON.stringify(next))
+      return { employees: next }
+    })
+  },
+
   // ── Documents ──────────────────────────────────────────────────
-  documents: [],
+  documents: (() => { try { return JSON.parse(localStorage.getItem('ntx_documents') || '[]') } catch { return [] } })(),
 
   fetchDocuments: async () => {
+    let local = []
+    try { local = JSON.parse(localStorage.getItem('ntx_documents') || '[]') } catch {}
     const { data } = await db.documents.list()
-    if (data) set({ documents: data })
+    if (data && data.length > 0) {
+      set({ documents: data })
+      localStorage.setItem('ntx_documents', JSON.stringify(data))
+    } else if (local.length > 0) {
+      set({ documents: local })
+    }
   },
 
   addDocument: async (doc) => {
     const { data } = await db.documents.create(doc)
-    if (data) set(s => ({ documents: [...s.documents, data] }))
-    return data
+    if (data) {
+      set(s => {
+        const next = [...s.documents, data]
+        localStorage.setItem('ntx_documents', JSON.stringify(next))
+        return { documents: next }
+      })
+      return data
+    }
+    const local = { ...doc, id: `local_${Date.now()}`, created_at: new Date().toISOString() }
+    set(s => {
+      const next = [...s.documents, local]
+      localStorage.setItem('ntx_documents', JSON.stringify(next))
+      return { documents: next }
+    })
+    return local
   },
 
   updateDocument: async (id, updates) => {
-    const { data } = await db.documents.update(id, updates)
-    if (data) set(s => ({ documents: s.documents.map(d => d.id === id ? data : d) }))
+    if (!String(id).startsWith('local_')) {
+      const { data } = await db.documents.update(id, updates)
+      if (data) {
+        set(s => {
+          const next = s.documents.map(d => d.id === id ? data : d)
+          localStorage.setItem('ntx_documents', JSON.stringify(next))
+          return { documents: next }
+        })
+        return
+      }
+    }
+    set(s => {
+      const next = s.documents.map(d => d.id === id ? { ...d, ...updates } : d)
+      localStorage.setItem('ntx_documents', JSON.stringify(next))
+      return { documents: next }
+    })
   },
 
   deleteDocument: async (id) => {
-    await db.documents.delete(id)
-    set(s => ({ documents: s.documents.filter(d => d.id !== id) }))
+    if (!String(id).startsWith('local_')) await db.documents.delete(id)
+    set(s => {
+      const next = s.documents.filter(d => d.id !== id)
+      localStorage.setItem('ntx_documents', JSON.stringify(next))
+      return { documents: next }
+    })
   },
 
   // ── Proposals ──────────────────────────────────────────────────

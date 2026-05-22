@@ -583,7 +583,8 @@ export default function ContractsPage() {
         </button>
       } />
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm p-5 space-y-4">
 
         {/* Expiry alerts */}
         {(expiring.length > 0 || expired.length > 0) && (
@@ -702,6 +703,7 @@ export default function ContractsPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       {/* New contract modal */}

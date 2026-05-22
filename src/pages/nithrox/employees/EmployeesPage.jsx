@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useStore } from '../../../stores/useStore'
 import Topbar from '../../../components/layout/Topbar'
 import { Button } from '../../../components/ui/button'
 import { Label } from '../../../components/ui/label'
@@ -19,11 +20,6 @@ const STATUS_STYLES = {
 const STATUS_LABELS = { active: 'Activo', inactive: 'Inactivo', vacation: 'Vacaciones' }
 
 const AVATAR_COLORS = ['#6366F1','#8B5CF6','#EC4899','#EF4444','#F59E0B','#10B981','#3B82F6','#14B8A6']
-
-function load() {
-  try { return JSON.parse(localStorage.getItem('ntx_employees') || '[]') } catch { return [] }
-}
-function save(data) { localStorage.setItem('ntx_employees', JSON.stringify(data)) }
 
 const EMPTY_FORM = { name: '', email: '', phone: '', department: 'Diseño', role: 'Junior', status: 'active', start_date: '', notes: '' }
 
@@ -118,36 +114,33 @@ function EmployeePanel({ employee, onClose, onSave, title }) {
 }
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState(load)
+  const { employees, addEmployee, updateEmployee, deleteEmployee, fetchEmployees } = useStore()
   const [search, setSearch] = useState('')
+
+  useEffect(() => { fetchEmployees() }, [])
   const [filterDept, setFilterDept] = useState('all')
   const [editEmp, setEditEmp] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [page, setPage] = useState(1)
   const PER_PAGE = 20
 
-  const mutate = (data) => { setEmployees(data); save(data) }
-
-  const handleSave = (form) => {
+  const handleSave = async (form) => {
     if (editEmp) {
-      mutate(employees.map(e => e.id === editEmp.id ? { ...editEmp, ...form } : e))
+      await updateEmployee(editEmp.id, form)
       toast.success('Empleado actualizado')
       setEditEmp(null)
     } else {
-      const newEmp = {
+      await addEmployee({
         ...form,
-        id: Date.now().toString(),
         avatar_color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
-        created_at: new Date().toISOString(),
-      }
-      mutate([newEmp, ...employees])
+      })
       toast.success('Empleado agregado')
       setShowAdd(false)
     }
   }
 
-  const handleDelete = (id) => {
-    mutate(employees.filter(e => e.id !== id))
+  const handleDelete = async (id) => {
+    await deleteEmployee(id)
     toast.success('Empleado eliminado')
   }
 

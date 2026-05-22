@@ -194,31 +194,27 @@ export default function ContactDetail() {
             </div>
 
             {/* Quick actions */}
-            <div className="flex justify-center gap-1 mb-5">
-              {contact.email && (
-                <a href={`mailto:${contact.email}`} title="Enviar email"
-                  className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
-                  <Mail className="w-4 h-4" /><span>Email</span>
-                </a>
-              )}
-              {contact.phone && (
-                <a href={`tel:${contact.phone}`} title="Llamar"
-                  className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
-                  <Phone className="w-4 h-4" /><span>Llamar</span>
-                </a>
-              )}
+            <div className="grid grid-cols-5 gap-1 mb-5">
+              <a href={`mailto:${contact.email || '#'}`} title="Enviar email"
+                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground py-2 px-1 rounded-md hover:bg-accent transition-colors">
+                <Mail className="w-4 h-4 shrink-0" /><span className="truncate w-full text-center">Email</span>
+              </a>
+              <a href={`tel:${contact.phone || '#'}`} title="Llamar"
+                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground py-2 px-1 rounded-md hover:bg-accent transition-colors">
+                <Phone className="w-4 h-4 shrink-0" /><span className="truncate w-full text-center">Llamar</span>
+              </a>
               <button onClick={() => { setAddingTask(true); setActiveTab('activities') }}
-                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
-                <ListTodo className="w-4 h-4" /><span>Task</span>
+                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground py-2 px-1 rounded-md hover:bg-accent transition-colors">
+                <ListTodo className="w-4 h-4 shrink-0" /><span className="truncate w-full text-center">Task</span>
               </button>
               <button onClick={() => setShowMeeting(true)}
-                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
-                <Calendar className="w-4 h-4" /><span>Reunión</span>
+                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground py-2 px-1 rounded-md hover:bg-accent transition-colors">
+                <Calendar className="w-4 h-4 shrink-0" /><span className="truncate w-full text-center">Reunión</span>
               </button>
               <button onClick={() => navigate(`/messages?contactId=${id}`)}
-                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
-                <MessageSquare className="w-4 h-4" />
-                <span>{contactConversation ? 'Chat' : 'Nuevo chat'}</span>
+                className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground py-2 px-1 rounded-md hover:bg-accent transition-colors">
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span className="truncate w-full text-center">Chat</span>
               </button>
             </div>
 

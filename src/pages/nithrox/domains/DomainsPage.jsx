@@ -58,7 +58,8 @@ export default function DomainsPage() {
         </div>
       } />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-hidden shadow-sm flex">
         {/* List */}
         <div className="w-full lg:w-[420px] flex flex-col border-r border-border shrink-0">
           {/* Stats */}
@@ -200,6 +201,7 @@ export default function DomainsPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

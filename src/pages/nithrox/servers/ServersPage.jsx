@@ -73,7 +73,8 @@ export default function ServersPage() {
         </button>
       } />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-hidden shadow-sm flex">
         {/* Left panel */}
         <div className="w-[420px] shrink-0 flex flex-col border-r border-border">
           {/* Stats bar */}
@@ -247,6 +248,7 @@ export default function ServersPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* New server modal */}
