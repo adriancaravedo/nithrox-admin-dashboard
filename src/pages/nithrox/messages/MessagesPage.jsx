@@ -817,7 +817,8 @@ export default function MessagesPage() {
         </div>
       } />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-hidden shadow-sm flex">
         {/* Sidebar */}
         <div className="w-[280px] border-r border-border flex flex-col shrink-0">
           <div className="p-3 border-b border-border">
@@ -1001,6 +1002,7 @@ export default function MessagesPage() {
             </div>
           )
         )}
+      </div>
       </div>
 
       {/* Popups */}

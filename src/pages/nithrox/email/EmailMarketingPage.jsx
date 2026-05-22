@@ -177,7 +177,8 @@ export default function EmailMarketingPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm p-4 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard icon={Mail}             label="Campañas totales" value={campaigns.length} color="text-blue-500" />
@@ -277,6 +278,7 @@ export default function EmailMarketingPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

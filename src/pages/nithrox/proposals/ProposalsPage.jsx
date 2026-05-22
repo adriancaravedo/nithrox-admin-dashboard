@@ -700,7 +700,8 @@ export default function ProposalsPage() {
         </button>
       } />
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm p-5 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3">
           {[
@@ -788,6 +789,7 @@ export default function ProposalsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {/* New proposal modal */}

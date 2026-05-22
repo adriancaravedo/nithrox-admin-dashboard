@@ -478,6 +478,8 @@ export default function AgendaPage() {
         </button>
       } />
 
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-hidden shadow-sm flex flex-col">
       {/* Sub-tabs */}
       <div className="flex border-b border-border px-5 shrink-0">
         {[
@@ -492,7 +494,7 @@ export default function AgendaPage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="flex-1 overflow-y-auto p-5 min-h-0">
 
         {/* ── Meeting Types ──────────────────────────────────── */}
         {view === 'types' && (
@@ -697,6 +699,8 @@ export default function AgendaPage() {
             </div>
           </div>
         )}
+      </div>
+      </div>
       </div>
 
       {/* Meeting type editor */}

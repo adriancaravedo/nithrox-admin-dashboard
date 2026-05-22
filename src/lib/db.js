@@ -131,6 +131,14 @@ export const db = {
     addResponse: (formId, data) => supabase.from('form_responses').insert({ form_id: formId, data }).select().single(),
   },
 
+  // ── Employees ─────────────────────────────────────────────
+  employees: {
+    list: () => supabase.from('employees').select('*').order('name'),
+    create: (data) => supabase.from('employees').insert(data).select().single(),
+    update: (id, data) => supabase.from('employees').update(data).eq('id', id).select().single(),
+    delete: (id) => supabase.from('employees').delete().eq('id', id),
+  },
+
   // ── Documents ──────────────────────────────────────────────
   documents: {
     list: () => supabase.from('documents').select('*').order('created_at', { ascending: false }),

@@ -167,7 +167,7 @@ export default function ProjectsPage() {
   const activeProject = activeId ? active.find(p => p.id === activeId) : null
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-zinc-50">
+    <div className="flex flex-col h-full overflow-hidden">
       <Topbar
         title="WEBSITES"
         actions={
@@ -178,7 +178,8 @@ export default function ProjectsPage() {
         }
       />
 
-      <div className="flex-1 overflow-x-auto">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-x-auto shadow-sm">
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}
@@ -244,6 +245,7 @@ export default function ProjectsPage() {
             )}
           </DragOverlay>
         </DndContext>
+      </div>
       </div>
 
       <AddProjectDialog open={showAdd} onClose={() => setShowAdd(false)} />

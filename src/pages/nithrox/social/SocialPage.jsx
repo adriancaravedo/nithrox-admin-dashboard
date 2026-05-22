@@ -134,7 +134,8 @@ export default function SocialPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm p-5 space-y-5">
 
         {/* Platform cards */}
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
@@ -327,6 +328,7 @@ export default function SocialPage() {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

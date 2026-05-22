@@ -391,7 +391,8 @@ Color styles: 12 defined`,
         ) : null
       } />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm">
 
         {/* ── CONFIG ───────────────────────────────────────── */}
         {step === 'config' && (
@@ -613,6 +614,7 @@ Color styles: 12 defined`,
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

@@ -548,7 +548,8 @@ export default function InvoicesPage() {
         </button>
       } />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="flex-1 overflow-hidden p-4">
+      <div className="h-full rounded-xl border border-border bg-background overflow-y-auto shadow-sm p-5 space-y-5">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -617,6 +618,7 @@ export default function InvoicesPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {showNew && (

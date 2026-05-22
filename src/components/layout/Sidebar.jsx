@@ -85,13 +85,23 @@ export function MobileMenuButton() {
   )
 }
 
+const BUSINESSES = [
+  { id: 'nithrox',        label: 'Nithrox',            initials: 'NX', color: 'bg-foreground' },
+  { id: 'thelowyx',       label: 'TheLowyx',           initials: 'TL', color: 'bg-blue-600' },
+  { id: 'algolowyx',      label: 'AlgoLowyx',          initials: 'AL', color: 'bg-purple-600' },
+  { id: 'lacajadecookie', label: 'La Caja de Cookie',  initials: 'LC', color: 'bg-amber-500' },
+]
+
 export default function Sidebar() {
   const { notifications } = useStore()
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebar()
   const { profile, logout } = useAuth()
   const [userOpen, setUserOpen] = useState(false)
+  const [bizOpen, setBizOpen] = useState(false)
+  const [activeBiz, setActiveBiz] = useState('nithrox')
   const navigate = useNavigate()
   const location = useLocation()
+  const currentBiz = BUSINESSES.find(b => b.id === activeBiz) || BUSINESSES[0]
 
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
@@ -121,26 +131,58 @@ export default function Sidebar() {
 
   return (
     <aside className={sidebarClass}>
-      {/* Header */}
+      {/* Header — Business switcher */}
       <div className={cn(
-        'flex items-center border-b border-border shrink-0 h-14 px-3 gap-2',
+        'flex items-center border-b border-border shrink-0 h-14 px-3 gap-2 relative',
         isCollapsed && 'justify-center px-0'
       )}>
-        <div className="w-7 h-7 bg-foreground rounded-lg flex items-center justify-center shrink-0">
-          <span className="text-background font-black text-[10px]">NX</span>
+        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', currentBiz.color)}>
+          <span className="text-white font-black text-[10px]">{currentBiz.initials}</span>
         </div>
 
         {!isCollapsed && (
           <>
-            <span className="text-sm font-black uppercase tracking-tight flex-1">Nithrox</span>
+            <span className="text-sm font-black uppercase tracking-tight flex-1 truncate">{currentBiz.label}</span>
             {/* Mobile close */}
             <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
-            {/* Business switcher */}
-            <button title="Cambiar negocio" className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors">
+            {/* Business switcher button */}
+            <button
+              title="Cambiar negocio"
+              onClick={() => setBizOpen(o => !o)}
+              className="hidden lg:flex p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors"
+            >
               <ChevronsUpDown className="w-3.5 h-3.5" />
             </button>
+          </>
+        )}
+
+        {/* Dropdown */}
+        {bizOpen && !isCollapsed && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setBizOpen(false)} />
+            <div className="absolute top-14 left-1 right-1 bg-popover border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+              <p className="px-3 pt-2.5 pb-1 text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">Mis negocios</p>
+              <div className="p-1">
+                {BUSINESSES.map(biz => (
+                  <button
+                    key={biz.id}
+                    onClick={() => { setActiveBiz(biz.id); setBizOpen(false) }}
+                    className={cn(
+                      'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors',
+                      activeBiz === biz.id ? 'bg-accent font-semibold' : 'hover:bg-accent/60 text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <div className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0', biz.color)}>
+                      <span className="text-white font-black text-[9px]">{biz.initials}</span>
+                    </div>
+                    <span className="flex-1 text-left truncate text-[13px]">{biz.label}</span>
+                    {activeBiz === biz.id && <span className="text-[9px] bg-foreground text-background px-1.5 py-0.5 rounded-full font-bold">ACTIVO</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
           </>
         )}
       </div>
