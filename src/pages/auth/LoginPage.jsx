@@ -25,8 +25,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4"
-      style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
       <div className="flex items-center gap-2.5 mb-8">
         <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center">
           <span className="text-white font-black text-sm">NTX</span>

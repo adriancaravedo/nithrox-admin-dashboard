@@ -126,7 +126,7 @@ export default function PortalContratos() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto" style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
       {/* Page header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
