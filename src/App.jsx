@@ -42,7 +42,7 @@ import DomainsPage from './pages/nithrox/domains/DomainsPage'
 // Admin — Herramientas
 import ConverterPage from './pages/nithrox/converter/ConverterPage'
 import FormsPage from './pages/nithrox/forms/FormsPage'
-import ProposalsPage from './pages/nithrox/proposals/ProposalsPage'
+import OnboardingPage from './pages/nithrox/onboarding/OnboardingPage'
 import AgendaPage from './pages/nithrox/agenda/AgendaPage'
 import ContractsPage from './pages/nithrox/contracts/ContractsPage'
 import InvoicesPage from './pages/nithrox/invoices/InvoicesPage'
@@ -138,7 +138,8 @@ export default function App() {
                 <Route path="/email-marketing" element={<EmailMarketingPage />} />
                 <Route path="/converter" element={<ConverterPage />} />
                 <Route path="/forms" element={<FormsPage />} />
-                <Route path="/proposals" element={<ProposalsPage />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/proposals" element={<Navigate to="/onboarding" replace />} />
                 <Route path="/agenda" element={<AgendaPage />} />
                 <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
