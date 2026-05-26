@@ -284,7 +284,7 @@ export default function PortalMensajes() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-200 bg-white shrink-0">
         <div className="w-9 h-9 bg-zinc-900 rounded-xl flex items-center justify-center overflow-hidden shrink-0">

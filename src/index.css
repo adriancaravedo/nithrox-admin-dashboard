@@ -55,10 +55,8 @@
 @layer base {
   * { @apply border-border; }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Geist Mono', monospace;
+    @apply bg-background text-foreground antialiased font-sans;
   }
-  * { font-family: 'Geist Mono', monospace !important; }
 }
 
 /* Scrollbar */

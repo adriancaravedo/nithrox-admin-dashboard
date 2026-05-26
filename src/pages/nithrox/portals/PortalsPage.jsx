@@ -205,7 +205,7 @@ function PortalEditor({ portal, onUpdate, onClose }) {
                 </div>
               </div>
               {/* Portal preview */}
-              <div className="text-[10px]" style={{ fontFamily: "'Geist Mono', monospace" }}>
+              <div className="text-[10px] font-sans">
                 {/* Header */}
                 <div className="flex items-center gap-2 px-3 py-2.5" style={{ background: `linear-gradient(135deg, ${portal.branding?.primary || '#18181b'}, ${portal.branding?.secondary || '#3b82f6'})` }}>
                   {portal.branding?.logo

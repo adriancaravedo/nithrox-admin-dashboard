@@ -56,7 +56,7 @@ export default function PortalReuniones() {
   const sorted = [...(meetings || [])].sort((a, b) => a.date?.localeCompare(b.date))
 
   return (
-    <div className="p-6 max-w-2xl mx-auto" style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <div className="p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg font-black uppercase tracking-tight">Mis reuniones</h1>
         <p className="text-xs text-zinc-400 mt-0.5">{sorted.length} reunión{sorted.length !== 1 ? 'es' : ''} programada{sorted.length !== 1 ? 's' : ''}</p>

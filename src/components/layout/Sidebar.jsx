@@ -46,7 +46,7 @@ const NAV_GROUPS = [
       { to: '/email-marketing', icon: Mail,        label: 'Email Marketing' },
       { to: '/converter',      icon: Zap,          label: 'NTX Convertidor' },
       { to: '/forms',          icon: ClipboardList, label: 'Formularios' },
-      { to: '/proposals',      icon: FileCheck,    label: 'Propuestas' },
+      { to: '/onboarding',     icon: FileCheck,    label: 'Onboarding' },
       { to: '/agenda',         icon: Calendar,     label: 'Agenda' },
       { to: '/contracts',      icon: FileText,     label: 'Contratos' },
       { to: '/invoices',       icon: Receipt,      label: 'Facturas' },

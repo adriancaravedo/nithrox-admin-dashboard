@@ -30,7 +30,7 @@ export default function PortalLayout() {
   const initials = (name) => name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CL'
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col" style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <div className="min-h-screen bg-zinc-50 flex flex-col font-sans">
       {/* Topbar */}
       <header className="bg-zinc-900 text-white h-14 flex items-center justify-between px-4 shrink-0 sticky top-0 z-40">
         <div className="flex items-center gap-3">
