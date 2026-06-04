@@ -194,6 +194,42 @@ export function usePortalData(contactId, userId) {
     })
   }
 
+  // Add a comment to a project phase — writes to same Supabase row the admin edits
+  const addPhaseComment = async (phaseKey, text, authorName) => {
+    if (!project?.id || !text.trim()) return null
+    const existingPhase = project?.phases?.[phaseKey] || {}
+    const existingComments = existingPhase.comments || []
+    const newComment = {
+      id: `cm${Date.now()}`,
+      text: text.trim(),
+      from: authorName || 'Cliente',
+      fromClient: true,
+      at: new Date().toISOString(),
+      pinned: false,
+    }
+    const updatedPhases = {
+      ...(project.phases || {}),
+      [phaseKey]: { ...existingPhase, comments: [...existingComments, newComment] },
+    }
+    // Optimistic update
+    setProject(prev => ({ ...prev, phases: updatedPhases }))
+    // Persist
+    await db.projects.update(project.id, { phases: updatedPhases })
+    return newComment
+  }
+
+  // Update phase status from client side (approve / request changes)
+  const updatePhaseStatus = async (phaseKey, status) => {
+    if (!project?.id) return
+    const existingPhase = project?.phases?.[phaseKey] || {}
+    const updatedPhases = {
+      ...(project.phases || {}),
+      [phaseKey]: { ...existingPhase, status },
+    }
+    setProject(prev => ({ ...prev, phases: updatedPhases }))
+    await db.projects.update(project.id, { phases: updatedPhases })
+  }
+
   return {
     project,
     conversation,
@@ -209,5 +245,7 @@ export function usePortalData(contactId, userId) {
     uploadAndSendVoice,
     broadcastTyping,
     signContract,
+    addPhaseComment,
+    updatePhaseStatus,
   }
 }
