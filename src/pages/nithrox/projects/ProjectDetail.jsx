@@ -5,6 +5,9 @@ import { PROJECT_PHASES } from '../../../lib/utils'
 import Topbar from '../../../components/layout/Topbar'
 import SitemapCanvas from '../../../components/shared/SitemapCanvas'
 import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Button } from '../../../components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import {
   ChevronRight, Upload, Plus, Trash2, ExternalLink,
   Check, X, Lock, CheckCircle2, Circle, Clock,
@@ -1289,10 +1292,12 @@ function TimelineView({ project, onClose }) {
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { projects, updateProjectPhase, updateProject } = useStore()
+  const { projects, updateProjectPhase, updateProject, contacts } = useStore()
   const [activePhase, setActivePhase] = useState('kickoff')
   const [activeSection, setActiveSection] = useState('content')
   const [showTimeline, setShowTimeline] = useState(false)
+  const [showChangeContact, setShowChangeContact] = useState(false)
+  const [pendingContactId, setPendingContactId] = useState('')
 
   const project = projects.find(p => p.id === id)
   if (!project) return (
@@ -1369,7 +1374,22 @@ export default function ProjectDetail() {
           {/* Project summary */}
           <div className="p-4 border-b border-border shrink-0">
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{project.company}</p>
-            <p className="text-[10px] text-muted-foreground mb-3">{project.framework}</p>
+            <p className="text-[10px] text-muted-foreground">{project.framework}</p>
+            {/* Contact row */}
+            {(() => {
+              const linkedContact = contacts?.find(c => c.id === project.contact_id)
+              return (
+                <div className="flex items-center justify-between mt-1 mb-3">
+                  <p className="text-[10px] text-muted-foreground truncate max-w-[160px]">
+                    {linkedContact ? `👤 ${linkedContact.name}` : <span className="text-muted-foreground/50">Sin contacto</span>}
+                  </p>
+                  <button onClick={() => { setPendingContactId(project.contact_id || ''); setShowChangeContact(true) }}
+                    className="text-[9px] text-primary hover:underline shrink-0 ml-1">
+                    {linkedContact ? 'cambiar' : '+ asignar'}
+                  </button>
+                </div>
+              )
+            })()}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground uppercase tracking-widest text-[9px] font-bold">COBRADO</span>
@@ -1460,6 +1480,43 @@ export default function ProjectDetail() {
           </div>
         </div>
       </div>
+
+      {/* Change contact dialog */}
+      <Dialog open={showChangeContact} onOpenChange={setShowChangeContact}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Asignar contacto al proyecto</DialogTitle></DialogHeader>
+          <div className="py-2">
+            <p className="text-xs text-muted-foreground mb-3">
+              El contacto asignado podrá ver este proyecto en su portal cliente.
+            </p>
+            <Select value={pendingContactId} onValueChange={setPendingContactId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar contacto..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— Sin contacto —</SelectItem>
+                {(contacts || []).map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}{c.email ? ` · ${c.email}` : ''}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowChangeContact(false)}>Cancelar</Button>
+            <Button size="sm" onClick={() => {
+              const contact = contacts?.find(c => c.id === pendingContactId)
+              updateProject(project.id, {
+                contact_id: pendingContactId || null,
+                contact: contact?.name || '',
+              })
+              setShowChangeContact(false)
+              toast.success(contact ? `Proyecto asignado a ${contact.name}` : 'Contacto removido del proyecto')
+            }}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

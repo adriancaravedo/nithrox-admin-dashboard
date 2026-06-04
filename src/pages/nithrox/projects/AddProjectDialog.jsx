@@ -13,7 +13,7 @@ export function AddProjectDialog({ open, onClose }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSubmit = () => {
-    if (!form.name || !form.company_id) return
+    if (!form.name) return
     const company = companies.find(c => c.id === form.company_id)
     const contact = contacts.find(c => c.id === form.contact_id)
     addProject({
@@ -32,7 +32,10 @@ export function AddProjectDialog({ open, onClose }) {
     onClose()
   }
 
-  const companyContacts = contacts.filter(c => c.company_id === form.company_id)
+  // Show all contacts when no company selected; filter to company's contacts when one is chosen
+  const companyContacts = form.company_id
+    ? contacts.filter(c => c.company_id === form.company_id)
+    : contacts
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -45,7 +48,7 @@ export function AddProjectDialog({ open, onClose }) {
               <Input placeholder="Tienda Online Fashion Co." value={form.name} onChange={e => set('name', e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Empresa *</Label>
+              <Label>Empresa</Label>
               <Select value={form.company_id} onValueChange={v => { set('company_id', v); set('contact_id', '') }}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
@@ -53,7 +56,7 @@ export function AddProjectDialog({ open, onClose }) {
             </div>
             <div className="space-y-1.5">
               <Label>Contacto</Label>
-              <Select value={form.contact_id} onValueChange={v => set('contact_id', v)} disabled={!form.company_id}>
+              <Select value={form.contact_id} onValueChange={v => set('contact_id', v)}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>{companyContacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -82,7 +85,7 @@ export function AddProjectDialog({ open, onClose }) {
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!form.name || !form.company_id}>Crear proyecto</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!form.name}>Crear proyecto</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
