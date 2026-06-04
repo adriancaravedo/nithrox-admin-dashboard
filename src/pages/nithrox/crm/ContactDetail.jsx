@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
 import { formatRelative, formatDate, getInitials, CONTACT_FIELD_DEFS } from '../../../lib/utils'
@@ -16,10 +16,12 @@ import { InlineField, TypedInput, PhoneInput } from '../../../components/shared/
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { db } from '../../../lib/db'
+import { toast } from 'sonner'
 import {
   Mail, Phone, ListTodo, Calendar, Plus, Trash2, Pin,
   GripVertical, Check, X, ExternalLink, FileText, Building2,
-  MessageSquare, FolderKanban
+  MessageSquare, FolderKanban, ShieldCheck, ShieldOff, LinkIcon, Loader2
 } from 'lucide-react'
 
 // ── Task item ────────────────────────────────────────────────
@@ -121,6 +123,30 @@ export default function ContactDetail() {
   const [meetingForm, setMeetingForm] = useState({ title: '', date: '', time: '' })
 
   const [activeTab, setActiveTab] = useState('activities')
+
+  // Portal tab state
+  const [portalProfile, setPortalProfile] = useState(undefined) // undefined = loading, null = not found
+  const [portalLinking, setPortalLinking] = useState(false)
+  useEffect(() => {
+    if (activeTab !== 'portal' || !contact.email) { setPortalProfile(null); return }
+    setPortalProfile(undefined)
+    db.profiles.findByEmail(contact.email).then(({ data }) => setPortalProfile(data || null))
+  }, [activeTab, contact.email])
+
+  const handleLinkPortal = async () => {
+    if (!contact.email) return toast.error('El contacto no tiene email')
+    setPortalLinking(true)
+    try {
+      const { data, error } = await db.profiles.linkContact(contact.email, contact.id)
+      if (error) throw error
+      setPortalProfile(data)
+      toast.success(`Portal vinculado a ${contact.name}`)
+    } catch (err) {
+      toast.error('No se encontró un usuario con ese email. El cliente debe registrarse primero.')
+    } finally {
+      setPortalLinking(false)
+    }
+  }
 
   // Tasks DnD
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -257,10 +283,14 @@ export default function ContactDetail() {
         {/* CENTER — Activities / Notas */}
         <div className="flex-1 overflow-hidden flex flex-col border-r border-border">
           <div className="flex border-b border-border shrink-0">
-            {['activities', 'notas'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-                {tab === 'activities' ? 'Activities' : 'Notas'}
+            {[
+              { id: 'activities', label: 'Activities' },
+              { id: 'notas', label: 'Notas' },
+              { id: 'portal', label: 'Portal' },
+            ].map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                {tab.label}
               </button>
             ))}
           </div>
@@ -333,6 +363,100 @@ export default function ContactDetail() {
                       onPin={(nid) => setNotes(p => p.map(n => n.id === nid ? { ...n, pinned: !n.pinned } : n))}
                       onDelete={(nid) => setNotes(p => p.filter(n => n.id !== nid))} />
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'portal' && (
+              <div className="space-y-5">
+                {/* Access status card */}
+                <div className={`rounded-xl border-2 p-4 ${portalProfile?.contact_id === contact.id ? 'border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800' : portalProfile ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-800' : 'border-border bg-muted/20'}`}>
+                  {portalProfile === undefined ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Verificando acceso...</span>
+                    </div>
+                  ) : portalProfile?.contact_id === contact.id ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <ShieldCheck className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-semibold text-green-700 dark:text-green-400">Portal activo y vinculado</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">El cliente puede ingresar con <strong>{portalProfile.email}</strong> y ver todos sus datos.</p>
+                    </div>
+                  ) : portalProfile ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldOff className="w-4 h-4 text-yellow-600" />
+                        <span className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">Cuenta existe, sin vincular</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">El usuario <strong>{portalProfile.email}</strong> tiene cuenta pero aún no está asociado a este contacto CRM.</p>
+                      <Button size="sm" className="h-7 text-xs gap-1.5" onClick={handleLinkPortal} disabled={portalLinking}>
+                        {portalLinking ? <Loader2 className="w-3 h-3 animate-spin" /> : <LinkIcon className="w-3 h-3" />}
+                        Vincular ahora
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <ShieldOff className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-semibold text-muted-foreground">Sin acceso al portal</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {contact.email ? `No existe cuenta con ${contact.email}. El cliente debe registrarse primero.` : 'Este contacto no tiene email configurado.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Linked data summary */}
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Datos vinculados al portal</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Projects */}
+                    <div className="border border-border rounded-lg p-3 cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate('/projects')}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <FolderKanban className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs font-semibold">Proyectos</span>
+                      </div>
+                      <p className="text-2xl font-bold tabular-nums">{contactProjects.length}</p>
+                      {contactProjects[0] && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{contactProjects[0].name}</p>}
+                    </div>
+                    {/* Contracts */}
+                    <div className="border border-border rounded-lg p-3 cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate('/contracts')}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs font-semibold">Contratos</span>
+                      </div>
+                      <p className="text-2xl font-bold tabular-nums">{contactContracts.length}</p>
+                      {contactContracts[0] && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{contactContracts[0].name}</p>}
+                    </div>
+                    {/* Messages */}
+                    <div className="border border-border rounded-lg p-3 cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate(`/messages?contactId=${id}`)}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs font-semibold">Mensajes</span>
+                      </div>
+                      <p className="text-2xl font-bold tabular-nums">{contactConversation ? (contactConversation.messages?.length || 0) : 0}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{contactConversation ? 'Conversación activa' : 'Sin conversación'}</p>
+                    </div>
+                    {/* Company */}
+                    <div className="border border-border rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs font-semibold">Empresa</span>
+                      </div>
+                      <p className="text-sm font-medium truncate">{company?.name || '—'}</p>
+                      {company && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{company.domain || 'Sin dominio'}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Data association tip */}
+                <div className="rounded-lg bg-muted/40 border border-border p-3">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <strong>¿Cómo funciona?</strong> Cuando el cliente inicia sesión en el portal, el sistema vincula automáticamente su cuenta al contacto CRM por email. Desde ese momento, verá todos los proyectos, contratos y mensajes asociados a este contacto — aunque hayan sido creados antes de que tuviera acceso.
+                  </p>
                 </div>
               </div>
             )}

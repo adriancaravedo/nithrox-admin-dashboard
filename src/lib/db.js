@@ -19,6 +19,7 @@ export const db = {
     create: (data) => supabase.from('contacts').insert(data).select().single(),
     update: (id, data) => supabase.from('contacts').update({ ...data, last_activity: new Date().toISOString() }).eq('id', id).select().single(),
     delete: (id) => supabase.from('contacts').delete().eq('id', id),
+    findByEmail: (email) => supabase.from('contacts').select('*').eq('email', email).maybeSingle(),
   },
 
   // ── Deals ──────────────────────────────────────────────────
@@ -194,5 +195,8 @@ export const db = {
     get: (id) => supabase.from('profiles').select('*').eq('id', id).single(),
     update: (id, data) => supabase.from('profiles').update(data).eq('id', id).select().single(),
     listAll: () => supabase.from('profiles').select('*').order('name'),
+    findByEmail: (email) => supabase.from('profiles').select('*').eq('email', email).maybeSingle(),
+    linkContact: (email, contactId) =>
+      supabase.from('profiles').update({ contact_id: contactId }).eq('email', email).select().single(),
   },
 }

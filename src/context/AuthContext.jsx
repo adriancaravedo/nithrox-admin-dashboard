@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { db } from '../lib/db'
 
 const AuthContext = createContext(null)
 
@@ -10,6 +11,19 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Look up CRM contact by email; if found, write contact_id back to profile row
+  const autoLinkContact = async (email, profileId) => {
+    if (!email) return null
+    try {
+      const { data: contact } = await db.contacts.findByEmail(email)
+      if (contact?.id) {
+        await supabase.from('profiles').update({ contact_id: contact.id }).eq('id', profileId)
+        return contact.id
+      }
+    } catch { /* non-fatal */ }
+    return null
+  }
 
   const loadProfile = async (authUser) => {
     if (!authUser) { setProfile(null); return }
@@ -27,7 +41,17 @@ export function AuthProvider({ children }) {
         }
         supabase.from('profiles').upsert(newProfile).then() // fire-and-forget
         setProfile(newProfile)
+        // Try to auto-link a CRM contact on first login
+        autoLinkContact(authUser.email, authUser.id)
       } else {
+        // Auto-link contact if client profile has no contact_id yet
+        if (data.role === 'client' && !data.contact_id) {
+          const linked = await autoLinkContact(data.email, data.id)
+          if (linked) {
+            setProfile({ ...data, contact_id: linked })
+            return
+          }
+        }
         setProfile(data)
       }
     } catch {
