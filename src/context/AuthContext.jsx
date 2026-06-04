@@ -82,6 +82,22 @@ export function AuthProvider({ children }) {
     return () => { clearTimeout(fallback); subscription.unsubscribe() }
   }, [])
 
+  // Realtime: watch own profile row so contact_id updates (from admin side) are
+  // reflected immediately — no page refresh needed
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabase
+      .channel(`profile-watch-${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'profiles',
+        filter: `id=eq.${user.id}`,
+      }, (payload) => {
+        setProfile(prev => prev ? { ...prev, ...payload.new } : payload.new)
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [user?.id])
+
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error

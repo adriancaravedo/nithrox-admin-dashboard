@@ -98,7 +98,13 @@ export const useStore = create((set, get) => ({
 
     const { data } = await db.contacts.create(payload)
     const shaped = withCustom(data)
-    if (shaped) set(s => ({ contacts: [...s.contacts, shaped] }))
+    if (shaped) {
+      set(s => ({ contacts: [...s.contacts, shaped] }))
+      // Auto-link any portal profile that has this email but no contact_id yet
+      if (shaped.email) {
+        db.profiles.linkContact(shaped.email, shaped.id).catch(() => {})
+      }
+    }
     return shaped
   },
 

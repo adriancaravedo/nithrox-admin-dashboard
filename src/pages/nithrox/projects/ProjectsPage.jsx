@@ -133,7 +133,7 @@ const PHASE_LABELS = {
 }
 
 export default function ProjectsPage() {
-  const { projects, moveProject, updateProject } = useStore()
+  const { projects, moveProject, updateProject, deleteProject } = useStore()
   const navigate = useNavigate()
   const [activeId, setActiveId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -214,7 +214,7 @@ export default function ProjectsPage() {
                           key={project.id}
                           project={project}
                           onClick={() => navigate(`/projects/${project.id}`)}
-                          onDelete={() => updateProject(project.id, { _deleted: true })}
+                          onDelete={() => deleteProject(project.id)}
                         />
                       ))}
                       {phaseProjects.length === 0 && (

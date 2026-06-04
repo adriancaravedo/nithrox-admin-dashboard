@@ -1383,7 +1383,7 @@ export default function ProjectDetail() {
                   <p className="text-[10px] text-muted-foreground truncate max-w-[160px]">
                     {linkedContact ? `👤 ${linkedContact.name}` : <span className="text-muted-foreground/50">Sin contacto</span>}
                   </p>
-                  <button onClick={() => { setPendingContactId(project.contact_id || ''); setShowChangeContact(true) }}
+                  <button onClick={() => { setPendingContactId(project.contact_id || '__none__'); setShowChangeContact(true) }}
                     className="text-[9px] text-primary hover:underline shrink-0 ml-1">
                     {linkedContact ? 'cambiar' : '+ asignar'}
                   </button>
@@ -1494,7 +1494,7 @@ export default function ProjectDetail() {
                 <SelectValue placeholder="Seleccionar contacto..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— Sin contacto —</SelectItem>
+                <SelectItem value="__none__">— Sin contacto —</SelectItem>
                 {(contacts || []).map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.name}{c.email ? ` · ${c.email}` : ''}</SelectItem>
                 ))}
@@ -1504,9 +1504,10 @@ export default function ProjectDetail() {
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowChangeContact(false)}>Cancelar</Button>
             <Button size="sm" onClick={() => {
-              const contact = contacts?.find(c => c.id === pendingContactId)
+              const realId = pendingContactId === '__none__' ? null : pendingContactId
+              const contact = contacts?.find(c => c.id === realId)
               updateProject(project.id, {
-                contact_id: pendingContactId || null,
+                contact_id: realId || null,
                 contact: contact?.name || '',
               })
               setShowChangeContact(false)

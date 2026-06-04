@@ -23,10 +23,12 @@ export function usePortalData(contactId, userId) {
 
   const typingChannelRef = useRef(null)
   const typingTimerRef = useRef(null)
+  // Always-fresh ref so async callbacks and stable callbacks see latest conv
   const convRef = useRef(null)
 
   useEffect(() => { convRef.current = conversation }, [conversation])
 
+  // Reload whenever contactId or userId changes (including null → real value)
   useEffect(() => {
     if (!contactId && !userId) { setLoading(false); return }
     const load = async () => {
@@ -42,9 +44,9 @@ export function usePortalData(contactId, userId) {
         ] = await Promise.all([
           contactId ? db.projects.forClient(contactId) : Promise.resolve({ data: null }),
           db.conversations.forClient(contactId, userId),
-          db.contracts.forClient(contactId),
-          db.proposals.forClient(contactId),
-          db.meetings.forContact(contactId),
+          contactId ? db.contracts.forClient(contactId) : Promise.resolve({ data: [] }),
+          contactId ? db.proposals.forClient(contactId) : Promise.resolve({ data: [] }),
+          contactId ? db.meetings.forContact(contactId) : Promise.resolve({ data: [] }),
           db.settings.get('chat'),
         ])
         setProject(proj || null)
@@ -60,7 +62,7 @@ export function usePortalData(contactId, userId) {
       }
     }
     load()
-  }, [contactId])
+  }, [contactId, userId])
 
   // Realtime: message inserts + updates
   useEffect(() => {
@@ -148,16 +150,23 @@ export function usePortalData(contactId, userId) {
     const { data: conv, error } = await db.conversations.create(payload)
     if (error) { console.error('createConversation:', error); return null }
     if (conv) {
-      setConversation({ ...conv, messages: [] })
+      const withMessages = { ...conv, messages: [] }
+      setConversation(withMessages)
+      // Immediately update the ref so sendMessage called right after this
+      // doesn't read a stale null from the previous render cycle
+      convRef.current = withMessages
     }
     return conv
   }
 
-  const sendMessage = async (text, userId, extra = {}) => {
-    if (!conversation?.id || !text.trim()) return
+  // Use convRef.current so this works even when called immediately after
+  // createConversation (before React re-renders with new conversation state)
+  const sendMessage = async (text, senderUserId, extra = {}) => {
+    const convId = convRef.current?.id
+    if (!convId || !text.trim()) return
     const { data: msg } = await db.messages.send({
-      conversation_id: conversation.id,
-      sender_id: userId,
+      conversation_id: convId,
+      sender_id: senderUserId,
       from_role: 'client',
       text: text.trim(),
       ...extra,
@@ -167,26 +176,28 @@ export function usePortalData(contactId, userId) {
         ...prev,
         messages: [...(prev.messages || []), msg],
       }))
-      await db.conversations.updateLastMessage(conversation.id, text.trim())
+      await db.conversations.updateLastMessage(convId, text.trim())
     }
     return msg
   }
 
-  const uploadAndSend = async (file, userId) => {
-    if (!conversation?.id || !file) return
+  const uploadAndSend = async (file, senderUserId) => {
+    const convId = convRef.current?.id
+    if (!convId || !file) return
     if (file.size > 5 * 1024 * 1024) throw new Error('Archivo demasiado grande (máx 5MB)')
     const dataUrl = await fileToDataUrl(file)
-    return sendMessage(file.name, userId, {
+    return sendMessage(file.name, senderUserId, {
       attachment_url: dataUrl,
       attachment_name: file.name,
       attachment_type: file.type,
     })
   }
 
-  const uploadAndSendVoice = async (blob, duration, userId) => {
-    if (!conversation?.id) return
+  const uploadAndSendVoice = async (blob, duration, senderUserId) => {
+    const convId = convRef.current?.id
+    if (!convId) return
     const dataUrl = await fileToDataUrl(blob)
-    return sendMessage('🎤 Nota de voz', userId, {
+    return sendMessage('🎤 Nota de voz', senderUserId, {
       attachment_url: dataUrl,
       attachment_type: 'audio/webm',
       is_voice_note: true,
