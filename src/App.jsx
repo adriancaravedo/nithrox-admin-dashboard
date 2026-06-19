@@ -6,6 +6,7 @@ import { DataProvider } from './context/DataContext'
 import Layout from './components/layout/Layout'
 import CommandPalette from './components/shared/CommandPalette'
 import LoginPage from './pages/auth/LoginPage'
+import LandingPage from './pages/landing/LandingPage'
 
 // Portal
 import PortalLayout from './pages/portal/PortalLayout'
@@ -38,6 +39,12 @@ import AgentsPage from './pages/nithrox/agents/AgentsPage'
 import ServersPage from './pages/nithrox/servers/ServersPage'
 import ServerDetail from './pages/nithrox/servers/ServerDetail'
 import DomainsPage from './pages/nithrox/domains/DomainsPage'
+
+// Public
+import PublicForm from './pages/public/PublicForm'
+
+// Admin — CRM — Inventory
+import InventoryPage from './pages/nithrox/inventory/InventoryPage'
 
 // Admin — Herramientas
 import ConverterPage from './pages/nithrox/converter/ConverterPage'
@@ -89,7 +96,9 @@ export default function App() {
               toastOptions={{ style: { fontFamily: 'Geist Variable, sans-serif', fontSize: '13px', borderRadius: '12px' } }} />
             <Routes>
               {/* Public */}
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
+              <Route path="/f/:formId" element={<PublicForm />} />
 
               {/* Client portal */}
               <Route path="/portal" element={<RequireAuth><PortalLayout /></RequireAuth>}>
@@ -104,8 +113,6 @@ export default function App() {
 
               {/* Admin */}
               <Route element={<RequireAuth adminOnly><CommandPalette /><Layout /></RequireAuth>}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
                 {/* Core */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/employees" element={<EmployeesPage />} />
@@ -113,6 +120,7 @@ export default function App() {
                 <Route path="/notifications" element={<NotificationsPage />} />
 
                 {/* CRM */}
+                <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/clients/contacts/:id" element={<ContactDetail />} />
                 <Route path="/clients/companies/:id" element={<CompanyDetail />} />

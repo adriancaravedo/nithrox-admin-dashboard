@@ -134,6 +134,8 @@ export default function DocumentsPage() {
   const [newFolderName, setNewFolderName] = useState('')
   const [showNewFolder, setShowNewFolder] = useState(null) // companyId
   const [activeId, setActiveId] = useState(null)
+  const [renamingFolder, setRenamingFolder] = useState(null) // { companyId, folderId }
+  const [renameValue, setRenameValue] = useState('')
   const uploadRef = useRef()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -142,10 +144,26 @@ export default function DocumentsPage() {
   const currentSubfolderId = selectedPath.subfolderId
   const currentCompany = companies.find(c => c.id === currentCompanyId)
 
+  const ROOT_FOLDER = { id: '__root__', name: 'Sin carpeta', icon: '📂', isRoot: true }
+
   const getCompanyFolders = (companyId) => {
     const defaults = DEFAULT_SUBFOLDERS
     const custom = (customFolders[companyId] || []).map(f => ({ ...f, isCustom: true }))
-    return [...defaults, ...custom]
+    return [ROOT_FOLDER, ...defaults, ...custom]
+  }
+
+  const renameCustomFolder = (companyId, folderId, newName) => {
+    if (!newName.trim()) return
+    const next = {
+      ...customFolders,
+      [companyId]: (customFolders[companyId] || []).map(f =>
+        f.id === folderId ? { ...f, name: newName.trim() } : f
+      ),
+    }
+    setCustomFolders(next)
+    saveCustomFolders(next)
+    setRenamingFolder(null)
+    toast.success('Carpeta renombrada')
   }
 
   const docsForCompany = (companyId) => documents.filter(d => d.company_id === companyId).length
@@ -160,10 +178,11 @@ export default function DocumentsPage() {
   )
 
   const handleUpload = (files) => {
-    if (!currentCompanyId || !currentSubfolderId) {
-      toast.error('Selecciona una carpeta primero')
+    if (!currentCompanyId) {
+      toast.error('Selecciona una empresa primero')
       return
     }
+    const subfolder = currentSubfolderId || '__root__'
     Array.from(files).forEach(file => {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -171,7 +190,7 @@ export default function DocumentsPage() {
           name: file.name,
           company_id: currentCompanyId,
           company: currentCompany?.name || '',
-          subfolder: currentSubfolderId,
+          subfolder,
           type: file.type,
           size_bytes: file.size,
           url: e.target.result,
@@ -236,15 +255,17 @@ export default function DocumentsPage() {
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar title="Documentos"
         actions={
-          currentSubfolderId ? (
+          currentCompanyId ? (
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="text-xs rounded-full px-4"
-                onClick={() => {
-                  setShowNewFolder(null)
-                  setSelectedPath(p => ({ ...p, subfolderId: null }))
-                }}>
-                ← Carpetas
-              </Button>
+              {currentSubfolderId && (
+                <Button size="sm" variant="outline" className="text-xs rounded-full px-4"
+                  onClick={() => {
+                    setShowNewFolder(null)
+                    setSelectedPath(p => ({ ...p, subfolderId: null }))
+                  }}>
+                  ← Carpetas
+                </Button>
+              )}
               <Button size="sm" onClick={() => uploadRef.current?.click()} className="text-xs rounded-full px-4">
                 <Upload className="w-3.5 h-3.5 mr-1.5" /> Subir archivo
               </Button>
@@ -255,7 +276,7 @@ export default function DocumentsPage() {
 
       <div
         className="flex-1 overflow-hidden p-4"
-        onDragOver={e => { e.preventDefault(); if (currentSubfolderId) setDragOver(true) }}
+        onDragOver={e => { e.preventDefault(); if (currentCompanyId) setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
@@ -323,28 +344,60 @@ export default function DocumentsPage() {
                             {folders.map(sf => {
                               const sfCount = docsForSubfolder(company.id, sf.id)
                               const isActive = selectedPath.companyId === company.id && selectedPath.subfolderId === sf.id
+                              const isRenaming = renamingFolder?.companyId === company.id && renamingFolder?.folderId === sf.id
                               return (
                                 <div key={sf.id} className="group/folder relative">
-                                  <button
-                                    onClick={() => { setSelectedPath({ companyId: company.id, subfolderId: sf.id }); setSearch('') }}
-                                    className={`w-full flex items-center gap-2 pl-7 pr-2 py-2 transition-colors text-left border-b border-border/20
-                                      ${isActive ? 'bg-accent/70 border-l-2 border-l-foreground' : 'hover:bg-accent/30'}`}
-                                  >
-                                    <span className="text-sm shrink-0">{sf.icon}</span>
-                                    <span className="flex-1 text-xs truncate">{sf.name}</span>
-                                    {sfCount > 0 && (
-                                      <span className="text-[9px] font-bold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 shrink-0">{sfCount}</span>
-                                    )}
-                                    {sf.isCustom && (
-                                      <button
-                                        onClick={e => { e.stopPropagation(); deleteFolder(company.id, sf.id) }}
-                                        className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-red-600 transition-all shrink-0"
-                                        title="Eliminar carpeta"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
+                                  {isRenaming ? (
+                                    <div className="flex items-center gap-1 pl-7 pr-2 py-1.5 border-b border-border/20">
+                                      <span className="text-sm">{sf.icon}</span>
+                                      <input
+                                        autoFocus
+                                        value={renameValue}
+                                        onChange={e => setRenameValue(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') renameCustomFolder(company.id, sf.id, renameValue)
+                                          if (e.key === 'Escape') setRenamingFolder(null)
+                                        }}
+                                        className="flex-1 text-xs border border-primary rounded px-1.5 py-0.5 outline-none bg-background"
+                                      />
+                                      <button onClick={() => renameCustomFolder(company.id, sf.id, renameValue)} className="text-primary">
+                                        <ChevronRight className="w-3.5 h-3.5" />
                                       </button>
-                                    )}
-                                  </button>
+                                      <button onClick={() => setRenamingFolder(null)} className="text-muted-foreground">
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setSelectedPath({ companyId: company.id, subfolderId: sf.id }); setSearch('') }}
+                                      className={`w-full flex items-center gap-2 pl-7 pr-2 py-2 transition-colors text-left border-b border-border/20
+                                        ${isActive ? 'bg-accent/70 border-l-2 border-l-foreground' : 'hover:bg-accent/30'}`}
+                                    >
+                                      <span className="text-sm shrink-0">{sf.icon}</span>
+                                      <span className="flex-1 text-xs truncate">{sf.name}</span>
+                                      {sfCount > 0 && (
+                                        <span className="text-[9px] font-bold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 shrink-0">{sfCount}</span>
+                                      )}
+                                      {sf.isCustom && (
+                                        <>
+                                          <button
+                                            onClick={e => { e.stopPropagation(); setRenamingFolder({ companyId: company.id, folderId: sf.id }); setRenameValue(sf.name) }}
+                                            className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-primary transition-all shrink-0"
+                                            title="Renombrar carpeta"
+                                          >
+                                            <Pencil className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={e => { e.stopPropagation(); deleteFolder(company.id, sf.id) }}
+                                            className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-red-600 transition-all shrink-0"
+                                            title="Eliminar carpeta"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
                                 </div>
                               )
                             })}
@@ -390,6 +443,9 @@ export default function DocumentsPage() {
 
             {/* ── RIGHT PANEL ─────────────────────────── */}
             <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+              {/* Hidden file input — available from any view */}
+              <input ref={uploadRef} type="file" multiple className="hidden" onChange={e => { handleUpload(e.target.files); e.target.value = '' }} />
+
               {currentSubfolderId ? (
                 <>
                   {/* Breadcrumb */}
@@ -404,8 +460,6 @@ export default function DocumentsPage() {
                     </span>
                     <span className="ml-auto text-[10px] text-muted-foreground">{filteredDocs.length} archivo{filteredDocs.length !== 1 ? 's' : ''}</span>
                   </div>
-
-                  <input ref={uploadRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
 
                   {/* File grid */}
                   <div className="flex-1 overflow-y-auto">
@@ -475,24 +529,60 @@ export default function DocumentsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {getCompanyFolders(currentCompanyId).map(sf => {
                       const count = docsForSubfolder(currentCompanyId, sf.id)
+                      const isRenaming = renamingFolder?.companyId === currentCompanyId && renamingFolder?.folderId === sf.id
                       return (
                         <div key={sf.id} className="group relative">
-                          <button
-                            onClick={() => setSelectedPath({ companyId: currentCompanyId, subfolderId: sf.id })}
-                            className="w-full bg-muted/30 hover:bg-accent/40 border border-border hover:border-foreground/20 rounded-xl p-4 text-left transition-all hover:shadow-sm"
-                          >
-                            <div className="text-3xl mb-2">{sf.icon}</div>
-                            <p className="text-xs font-semibold truncate">{sf.name}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{count} archivo{count !== 1 ? 's' : ''}</p>
-                          </button>
-                          {sf.isCustom && (
+                          {isRenaming ? (
+                            <div className="bg-muted/30 border border-primary rounded-xl p-4">
+                              <div className="text-3xl mb-2">{sf.icon}</div>
+                              <input
+                                autoFocus
+                                value={renameValue}
+                                onChange={e => setRenameValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') renameCustomFolder(currentCompanyId, sf.id, renameValue)
+                                  if (e.key === 'Escape') setRenamingFolder(null)
+                                }}
+                                className="w-full text-xs border border-primary rounded px-1.5 py-1 outline-none bg-background"
+                              />
+                              <div className="flex gap-1.5 mt-2">
+                                <button onClick={() => renameCustomFolder(currentCompanyId, sf.id, renameValue)}
+                                  className="flex-1 text-[10px] font-bold bg-foreground text-background rounded-md py-1">
+                                  OK
+                                </button>
+                                <button onClick={() => setRenamingFolder(null)}
+                                  className="flex-1 text-[10px] border border-border rounded-md py-1">
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
                             <button
-                              onClick={() => deleteFolder(currentCompanyId, sf.id)}
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 hover:text-red-600 rounded-md transition-all"
-                              title="Eliminar carpeta"
+                              onClick={() => setSelectedPath({ companyId: currentCompanyId, subfolderId: sf.id })}
+                              className="w-full bg-muted/30 hover:bg-accent/40 border border-border hover:border-foreground/20 rounded-xl p-4 text-left transition-all hover:shadow-sm"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <div className="text-3xl mb-2">{sf.icon}</div>
+                              <p className="text-xs font-semibold truncate">{sf.name}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{count} archivo{count !== 1 ? 's' : ''}</p>
                             </button>
+                          )}
+                          {sf.isCustom && !isRenaming && (
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
+                              <button
+                                onClick={() => { setRenamingFolder({ companyId: currentCompanyId, folderId: sf.id }); setRenameValue(sf.name) }}
+                                className="p-1 bg-background/90 hover:bg-accent rounded-md shadow-sm"
+                                title="Renombrar"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => deleteFolder(currentCompanyId, sf.id)}
+                                className="p-1 bg-background/90 hover:bg-red-50 hover:text-red-600 rounded-md shadow-sm"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       )

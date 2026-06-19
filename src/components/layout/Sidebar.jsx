@@ -9,7 +9,7 @@ import {
   Zap, ClipboardList, FileCheck, Calendar, FileText,
   Receipt, Bell, Settings, LogOut, ChevronDown,
   ChevronsUpDown, Menu, X, UserRound,
-  Share2, Mail
+  Share2, Mail, Store
 } from 'lucide-react'
 
 // ── Navigation structure ──────────────────────────────────────
@@ -28,6 +28,7 @@ const NAV_GROUPS = [
       { to: '/documents', icon: FolderOpen,     label: 'Documentos' },
       { to: '/catalogo',  icon: Tag,            label: 'Catálogo' },
       { to: '/billing',   icon: CreditCard,     label: 'Facturación' },
+      { to: '/inventory', icon: Store,          label: 'Inventario' },
     ],
   },
   {
@@ -90,6 +91,7 @@ const BUSINESSES = [
   { id: 'thelowyx',       label: 'TheLowyx',           initials: 'TL', color: 'bg-blue-600' },
   { id: 'algolowyx',      label: 'AlgoLowyx',          initials: 'AL', color: 'bg-purple-600' },
   { id: 'lacajadecookie', label: 'La Caja de Cookie',  initials: 'LC', color: 'bg-amber-500' },
+  { id: 'lowis',          label: 'Lowis',              initials: 'LW', color: 'bg-rose-500' },
 ]
 
 export default function Sidebar() {
