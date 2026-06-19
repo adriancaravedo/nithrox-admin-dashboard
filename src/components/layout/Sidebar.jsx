@@ -28,7 +28,6 @@ const NAV_GROUPS = [
       { to: '/documents', icon: FolderOpen,     label: 'Documentos' },
       { to: '/catalogo',  icon: Tag,            label: 'Catálogo' },
       { to: '/billing',   icon: CreditCard,     label: 'Facturación' },
-      { to: '/inventory', icon: Store,          label: 'Inventario' },
     ],
   },
   {

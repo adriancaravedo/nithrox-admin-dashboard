@@ -43,9 +43,6 @@ import DomainsPage from './pages/nithrox/domains/DomainsPage'
 // Public
 import PublicForm from './pages/public/PublicForm'
 
-// Admin — CRM — Inventory
-import InventoryPage from './pages/nithrox/inventory/InventoryPage'
-
 // Admin — Herramientas
 import ConverterPage from './pages/nithrox/converter/ConverterPage'
 import FormsPage from './pages/nithrox/forms/FormsPage'
@@ -120,7 +117,6 @@ export default function App() {
                 <Route path="/notifications" element={<NotificationsPage />} />
 
                 {/* CRM */}
-                <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/clients/contacts/:id" element={<ContactDetail />} />
                 <Route path="/clients/companies/:id" element={<CompanyDetail />} />

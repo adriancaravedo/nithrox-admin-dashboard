@@ -1,9 +1,11 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar, { SidebarProvider, useSidebar } from './Sidebar'
 import InventoryPage from '../../pages/nithrox/inventory/InventoryPage'
+import TradingPage from '../../pages/algolowyx/TradingPage'
 
 const BIZ_DASHBOARDS = {
-  lowis: InventoryPage,
+  lowis:      InventoryPage,
+  algolowyx:  TradingPage,
 }
 
 function LayoutInner() {
