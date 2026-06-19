@@ -1,11 +1,15 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import Sidebar, { SidebarProvider, useSidebar } from './Sidebar'
+import InventoryPage from '../../pages/nithrox/inventory/InventoryPage'
+
+const BIZ_DASHBOARDS = {
+  lowis: InventoryPage,
+}
 
 function LayoutInner() {
-  const { mobileOpen, setMobileOpen } = useSidebar()
-  const location = useLocation()
+  const { mobileOpen, setMobileOpen, activeBiz } = useSidebar()
+  const CustomDashboard = BIZ_DASHBOARDS[activeBiz]
 
-  // Close mobile sidebar on route change
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile overlay */}
@@ -19,7 +23,7 @@ function LayoutInner() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Outlet />
+        {CustomDashboard ? <CustomDashboard /> : <Outlet />}
       </div>
     </div>
   )

@@ -48,6 +48,16 @@ function loadCustomFolders() {
 }
 function saveCustomFolders(data) { localStorage.setItem('ntx_custom_folders', JSON.stringify(data)) }
 
+function loadFolderRenames() {
+  try { return JSON.parse(localStorage.getItem('ntx_folder_renames') || '{}') } catch { return {} }
+}
+function saveFolderRenames(data) { localStorage.setItem('ntx_folder_renames', JSON.stringify(data)) }
+
+function loadHiddenFolders() {
+  try { return JSON.parse(localStorage.getItem('ntx_hidden_folders') || '{}') } catch { return {} }
+}
+function saveHiddenFolders(data) { localStorage.setItem('ntx_hidden_folders', JSON.stringify(data)) }
+
 // ── Sortable file card ───────────────────────────────────────
 function SortableFileCard({ doc, onDelete, onRename, onPreview }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: doc.id })
@@ -131,6 +141,8 @@ export default function DocumentsPage() {
   const [dragOver, setDragOver] = useState(false)
   const [search, setSearch] = useState('')
   const [customFolders, setCustomFolders] = useState(loadCustomFolders)
+  const [folderRenames, setFolderRenames] = useState(loadFolderRenames)
+  const [hiddenFolders, setHiddenFolders] = useState(loadHiddenFolders)
   const [newFolderName, setNewFolderName] = useState('')
   const [showNewFolder, setShowNewFolder] = useState(null) // companyId
   const [activeId, setActiveId] = useState(null)
@@ -144,24 +156,45 @@ export default function DocumentsPage() {
   const currentSubfolderId = selectedPath.subfolderId
   const currentCompany = companies.find(c => c.id === currentCompanyId)
 
-  const ROOT_FOLDER = { id: '__root__', name: 'Sin carpeta', icon: '📂', isRoot: true }
+  const ROOT_FOLDER = { id: '__root__', name: 'Sin carpeta', icon: '📂' }
 
   const getCompanyFolders = (companyId) => {
+    const hidden = hiddenFolders[companyId] || []
+    const renames = folderRenames[companyId] || {}
     const defaults = DEFAULT_SUBFOLDERS
-    const custom = (customFolders[companyId] || []).map(f => ({ ...f, isCustom: true }))
-    return [ROOT_FOLDER, ...defaults, ...custom]
+      .filter(f => !hidden.includes(f.id))
+      .map(f => ({ ...f, name: renames[f.id] || f.name }))
+    const rootName = renames['__root__'] || ROOT_FOLDER.name
+    const rootVisible = !hidden.includes('__root__')
+    const custom = (customFolders[companyId] || [])
+      .filter(f => !hidden.includes(f.id))
+      .map(f => ({ ...f, name: renames[f.id] || f.name, isCustom: true }))
+    return [
+      ...(rootVisible ? [{ ...ROOT_FOLDER, name: rootName }] : []),
+      ...defaults,
+      ...custom,
+    ]
   }
 
-  const renameCustomFolder = (companyId, folderId, newName) => {
+  // Rename any folder type (default, custom, or root)
+  const renameFolder = (companyId, folderId, newName) => {
     if (!newName.trim()) return
-    const next = {
-      ...customFolders,
-      [companyId]: (customFolders[companyId] || []).map(f =>
-        f.id === folderId ? { ...f, name: newName.trim() } : f
-      ),
+    const isCustom = (customFolders[companyId] || []).some(f => f.id === folderId)
+    if (isCustom) {
+      const next = {
+        ...customFolders,
+        [companyId]: (customFolders[companyId] || []).map(f =>
+          f.id === folderId ? { ...f, name: newName.trim() } : f
+        ),
+      }
+      setCustomFolders(next)
+      saveCustomFolders(next)
+    } else {
+      // Default or root folder: store rename separately
+      const next = { ...folderRenames, [companyId]: { ...(folderRenames[companyId] || {}), [folderId]: newName.trim() } }
+      setFolderRenames(next)
+      saveFolderRenames(next)
     }
-    setCustomFolders(next)
-    saveCustomFolders(next)
     setRenamingFolder(null)
     toast.success('Carpeta renombrada')
   }
@@ -222,10 +255,19 @@ export default function DocumentsPage() {
     // Delete all docs in folder
     const toDelete = documents.filter(d => d.company_id === companyId && d.subfolder === folderId)
     toDelete.forEach(d => deleteDocument(d.id))
-    // Remove from custom folders
-    const next = { ...customFolders, [companyId]: (customFolders[companyId] || []).filter(f => f.id !== folderId) }
-    setCustomFolders(next)
-    saveCustomFolders(next)
+
+    const isCustom = (customFolders[companyId] || []).some(f => f.id === folderId)
+    if (isCustom) {
+      // Remove from custom folders list
+      const next = { ...customFolders, [companyId]: (customFolders[companyId] || []).filter(f => f.id !== folderId) }
+      setCustomFolders(next)
+      saveCustomFolders(next)
+    } else {
+      // Hide default/root folder
+      const next = { ...hiddenFolders, [companyId]: [...(hiddenFolders[companyId] || []), folderId] }
+      setHiddenFolders(next)
+      saveHiddenFolders(next)
+    }
     if (selectedPath.subfolderId === folderId) setSelectedPath({ companyId, subfolderId: null })
     toast.success('Carpeta eliminada')
   }
@@ -355,12 +397,12 @@ export default function DocumentsPage() {
                                         value={renameValue}
                                         onChange={e => setRenameValue(e.target.value)}
                                         onKeyDown={e => {
-                                          if (e.key === 'Enter') renameCustomFolder(company.id, sf.id, renameValue)
+                                          if (e.key === 'Enter') renameFolder(company.id, sf.id, renameValue)
                                           if (e.key === 'Escape') setRenamingFolder(null)
                                         }}
                                         className="flex-1 text-xs border border-primary rounded px-1.5 py-0.5 outline-none bg-background"
                                       />
-                                      <button onClick={() => renameCustomFolder(company.id, sf.id, renameValue)} className="text-primary">
+                                      <button onClick={() => renameFolder(company.id, sf.id, renameValue)} className="text-primary">
                                         <ChevronRight className="w-3.5 h-3.5" />
                                       </button>
                                       <button onClick={() => setRenamingFolder(null)} className="text-muted-foreground">
@@ -378,24 +420,20 @@ export default function DocumentsPage() {
                                       {sfCount > 0 && (
                                         <span className="text-[9px] font-bold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 shrink-0">{sfCount}</span>
                                       )}
-                                      {sf.isCustom && (
-                                        <>
-                                          <button
-                                            onClick={e => { e.stopPropagation(); setRenamingFolder({ companyId: company.id, folderId: sf.id }); setRenameValue(sf.name) }}
-                                            className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-primary transition-all shrink-0"
-                                            title="Renombrar carpeta"
-                                          >
-                                            <Pencil className="w-3 h-3" />
-                                          </button>
-                                          <button
-                                            onClick={e => { e.stopPropagation(); deleteFolder(company.id, sf.id) }}
-                                            className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-red-600 transition-all shrink-0"
-                                            title="Eliminar carpeta"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        </>
-                                      )}
+                                      <button
+                                        onClick={e => { e.stopPropagation(); setRenamingFolder({ companyId: company.id, folderId: sf.id }); setRenameValue(sf.name) }}
+                                        className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-primary transition-all shrink-0"
+                                        title="Renombrar"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                      </button>
+                                      <button
+                                        onClick={e => { e.stopPropagation(); deleteFolder(company.id, sf.id) }}
+                                        className="opacity-0 group-hover/folder:opacity-100 p-0.5 hover:text-red-600 transition-all shrink-0"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
                                     </button>
                                   )}
                                 </div>
@@ -540,13 +578,13 @@ export default function DocumentsPage() {
                                 value={renameValue}
                                 onChange={e => setRenameValue(e.target.value)}
                                 onKeyDown={e => {
-                                  if (e.key === 'Enter') renameCustomFolder(currentCompanyId, sf.id, renameValue)
+                                  if (e.key === 'Enter') renameFolder(currentCompanyId, sf.id, renameValue)
                                   if (e.key === 'Escape') setRenamingFolder(null)
                                 }}
                                 className="w-full text-xs border border-primary rounded px-1.5 py-1 outline-none bg-background"
                               />
                               <div className="flex gap-1.5 mt-2">
-                                <button onClick={() => renameCustomFolder(currentCompanyId, sf.id, renameValue)}
+                                <button onClick={() => renameFolder(currentCompanyId, sf.id, renameValue)}
                                   className="flex-1 text-[10px] font-bold bg-foreground text-background rounded-md py-1">
                                   OK
                                 </button>
@@ -566,7 +604,7 @@ export default function DocumentsPage() {
                               <p className="text-[10px] text-muted-foreground mt-0.5">{count} archivo{count !== 1 ? 's' : ''}</p>
                             </button>
                           )}
-                          {sf.isCustom && !isRenaming && (
+                          {!isRenaming && (
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
                               <button
                                 onClick={() => { setRenamingFolder({ companyId: currentCompanyId, folderId: sf.id }); setRenameValue(sf.name) }}

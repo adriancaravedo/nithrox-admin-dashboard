@@ -58,16 +58,19 @@ const NAV_GROUPS = [
 export const SidebarContext = createContext({
   collapsed: false, toggle: () => {},
   mobileOpen: false, setMobileOpen: () => {},
+  activeBiz: 'nithrox', setActiveBiz: () => {},
 })
 export const useSidebar = () => useContext(SidebarContext)
 
 export function SidebarProvider({ children }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [activeBiz, setActiveBiz] = useState('nithrox')
   return (
     <SidebarContext.Provider value={{
       collapsed, toggle: () => setCollapsed(c => !c),
       mobileOpen, setMobileOpen,
+      activeBiz, setActiveBiz,
     }}>
       {children}
     </SidebarContext.Provider>
@@ -96,11 +99,10 @@ const BUSINESSES = [
 
 export default function Sidebar() {
   const { notifications } = useStore()
-  const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebar()
+  const { collapsed, toggle, mobileOpen, setMobileOpen, activeBiz, setActiveBiz } = useSidebar()
   const { profile, logout } = useAuth()
   const [userOpen, setUserOpen] = useState(false)
   const [bizOpen, setBizOpen] = useState(false)
-  const [activeBiz, setActiveBiz] = useState('nithrox')
   const navigate = useNavigate()
   const location = useLocation()
   const currentBiz = BUSINESSES.find(b => b.id === activeBiz) || BUSINESSES[0]
