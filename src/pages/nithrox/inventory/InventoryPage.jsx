@@ -613,13 +613,15 @@ function CategoryCard({ cat, count, onEdit, onDelete }) {
 }
 
 // ── Main ───────────────────────────────────────────────────────
-export default function InventoryPage() {
+export default function InventoryPage({ activeTab: activeTabProp, setActiveTab: setActiveTabProp } = {}) {
   const [products, setProducts] = useState(() => load('ntx_inv_products', []))
   const [categories, setCategories] = useState(() => load('ntx_inv_categories', DEFAULT_CATEGORIES))
   const [movements, setMovements] = useState(() => load('ntx_inv_movements', []))
   const [settings, setSettings] = useState(() => load('ntx_inv_settings', { webhooks: [], apiKey: '' }))
 
-  const [activeTab, setActiveTab] = useState('products')
+  const [activeTabInternal, setActiveTabInternal] = useState('products')
+  const activeTab = activeTabProp || activeTabInternal
+  const setActiveTab = setActiveTabProp || setActiveTabInternal
   const [viewMode, setViewMode] = useState('grid')
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('all')
@@ -785,18 +787,20 @@ export default function InventoryPage() {
         })}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-border bg-background shrink-0 px-4">
-        {TABS.map(t => {
-          const Icon = t.icon
-          return (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${activeTab === t.id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-              <Icon className="w-3.5 h-3.5" />{t.label}
-            </button>
-          )
-        })}
-      </div>
+      {/* Internal tab bar — only shown when not controlled by sidebar */}
+      {!activeTabProp && (
+        <div className="flex border-b border-border bg-background shrink-0 px-4">
+          {TABS.map(t => {
+            const Icon = t.icon
+            return (
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${activeTab === t.id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                <Icon className="w-3.5 h-3.5" />{t.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
