@@ -170,10 +170,11 @@ export default function StoreAdminPage() {
   // ── Load from Supabase ─────────────────────────────────────
   const loadOrders = useCallback(async () => {
     setLoadingOrders(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('orders')
-      .select('*, contacts(full_name, email)')
+      .select('*, profiles(name, email)')
       .order('created_at', { ascending: false })
+    if (error) toast.error(`Error cargando pedidos: ${error.message}`)
     setOrders(data || [])
     setLoadingOrders(false)
   }, [])
@@ -361,7 +362,7 @@ function ResumenTab({ orders, loading, onRefresh }) {
           {orders.slice(0, 10).map(order => (
             <div key={order.id} className="flex items-center gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{order.contacts?.full_name || order.client_name || 'Cliente'}</p>
+                <p className="text-sm font-semibold truncate">{order.profiles?.name || order.client_name || 'Cliente'}</p>
                 <p className="text-[11px] text-muted-foreground">{order.plan_name} · {new Date(order.created_at).toLocaleDateString('es-PE')}</p>
               </div>
               <p className="text-sm font-bold shrink-0">S/ {Number(order.total_pen || 0).toLocaleString('es-PE')}</p>
@@ -440,11 +441,11 @@ function PedidosTab({ orders, loading, onRefresh }) {
         body: JSON.stringify({ orderId: order.id, adminKey: ADMIN_KEY }),
       })
       if (!res.ok) throw new Error('Store API error')
-      toast.success(`✅ Pago validado: ${order.contacts?.full_name || 'Cliente'}`)
+      toast.success(`✅ Pago validado: ${order.profiles?.name || order.client_name || 'Cliente'}`)
     } catch {
       const { error } = await supabase.from('orders').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', order.id)
       if (error) { toast.error('Error al validar'); return }
-      toast.success(`✅ Pago validado: ${order.contacts?.full_name || 'Cliente'}`)
+      toast.success(`✅ Pago validado: ${order.profiles?.name || order.client_name || 'Cliente'}`)
     }
   }
 
@@ -539,11 +540,11 @@ function PedidosTab({ orders, loading, onRefresh }) {
                         onClick={() => setExpanded(isExpanded ? null : order.id)}
                       >
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0 uppercase">
-                          {(order.contacts?.full_name || order.client_name || 'C')[0]}
+                          {(order.profiles?.name || order.client_name || 'C')[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold truncate">{order.contacts?.full_name || order.client_name || 'Cliente'}</p>
+                            <p className="text-sm font-semibold truncate">{order.profiles?.name || order.client_name || 'Cliente'}</p>
                             {needsValidation && (
                               <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase">Comprobante adjunto</span>
                             )}
@@ -561,14 +562,56 @@ function PedidosTab({ orders, loading, onRefresh }) {
 
                       {isExpanded && (
                         <div className="px-4 pb-4 bg-muted/20 border-t border-border space-y-3 pt-3">
-                          <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="grid grid-cols-2 gap-3 text-xs">
                             <div>
-                              <p className="text-muted-foreground mb-0.5">ID del pedido</p>
-                              <p className="font-mono font-semibold">{order.id}</p>
+                              <p className="text-muted-foreground mb-0.5">Cliente</p>
+                              <p className="font-semibold">{order.profiles?.name || order.client_name || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground mb-0.5">Email cliente</p>
-                              <p className="font-semibold">{order.contacts?.email || order.client_email || '—'}</p>
+                              <p className="text-muted-foreground mb-0.5">Email</p>
+                              <p className="font-semibold">{order.profiles?.email || order.client_email || '—'}</p>
+                            </div>
+                            {order.client_phone && (
+                              <div>
+                                <p className="text-muted-foreground mb-0.5">Teléfono</p>
+                                <p className="font-semibold">{order.client_phone}</p>
+                              </div>
+                            )}
+                            {order.client_company && (
+                              <div>
+                                <p className="text-muted-foreground mb-0.5">Empresa</p>
+                                <p className="font-semibold">{order.client_company}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-muted-foreground mb-0.5">Plan</p>
+                              <p className="font-semibold">{order.plan_name || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground mb-0.5">Método de pago</p>
+                              <p className="font-semibold">{order.payment_method || '—'}</p>
+                            </div>
+                            {order.items?.addons?.length > 0 && (
+                              <div className="col-span-2">
+                                <p className="text-muted-foreground mb-0.5">Addons</p>
+                                <p className="font-semibold">{order.items.addons.map(a => typeof a.name === 'object' ? a.name?.es : a.name).join(', ')}</p>
+                              </div>
+                            )}
+                            {order.items?.hosting && !order.items.hosting._noHosting && (
+                              <div>
+                                <p className="text-muted-foreground mb-0.5">Hosting</p>
+                                <p className="font-semibold">{typeof order.items.hosting.name === 'object' ? order.items.hosting.name?.es : order.items.hosting.name}</p>
+                              </div>
+                            )}
+                            {order.items?.domain?.full && (
+                              <div>
+                                <p className="text-muted-foreground mb-0.5">Dominio</p>
+                                <p className="font-semibold">{order.items.domain.full}</p>
+                              </div>
+                            )}
+                            <div className="col-span-2">
+                              <p className="text-muted-foreground mb-0.5">ID del pedido</p>
+                              <p className="font-mono text-[10px] text-muted-foreground">{order.id}</p>
                             </div>
                             {order.voucher_url && (
                               <div className="col-span-2">
@@ -647,13 +690,17 @@ function PedidosTab({ orders, loading, onRefresh }) {
                   <div className="divide-y divide-border">
                     {drafts.map(draft => {
                       const st = draft.state || {}
+                      const stepFromDB = draft.current_step
                       const { step, label, color } = inferFunnelStep(st)
                       const isOpen = expandedDraft === draft.id
                       const planName = st.plan?.name || '—'
                       const hostingName = st.hosting?._noHosting ? 'Sin hosting' : (typeof st.hosting?.name === 'object' ? st.hosting.name?.es : st.hosting?.name) || '—'
                       const domainName = st.domain?.full || '—'
                       const addonCount = (st.addons || []).length
-                      const updatedAgo = draft.updated_at ? new Date(draft.updated_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+                      const updatedAt = draft.updated_at ? new Date(draft.updated_at).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+                      const displayId = draft.user_id ? `User ${draft.user_id.slice(0, 8)}…` : draft.session_id ? `Anón ${draft.session_id.slice(0, 8)}…` : 'Sin ID'
+                      const STEP_LABELS = { plan: 'Plan', account: 'Cuenta', customize: 'Proyecto', hosting: 'Hosting', domain: 'Dominio', addons: 'Extras', review: 'Resumen', contract: 'Contrato', payment: 'Pago' }
+                      const stepLabel = STEP_LABELS[stepFromDB] || stepFromDB || label
                       return (
                         <div key={draft.id}>
                           <div
@@ -664,14 +711,14 @@ function PedidosTab({ orders, loading, onRefresh }) {
                               {step}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold truncate">{draft.user_id ? `User ${draft.user_id.slice(0, 8)}…` : 'Anónimo'}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold truncate">{displayId}</p>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: color + '20', color }}>
-                                  {label}
+                                  {stepLabel}
                                 </span>
                               </div>
                               <p className="text-[11px] text-muted-foreground">
-                                {planName !== '—' && `Plan: ${planName}`}{addonCount > 0 && ` · ${addonCount} addon${addonCount > 1 ? 's' : ''}`} · {updatedAgo}
+                                {planName !== '—' && `Plan: ${planName}`}{addonCount > 0 && ` · ${addonCount} addon${addonCount > 1 ? 's' : ''}`} · {updatedAt}
                               </p>
                             </div>
                             <div className="text-muted-foreground">
@@ -725,7 +772,11 @@ function PedidosTab({ orders, loading, onRefresh }) {
                                   <p className="text-xs font-mono bg-muted rounded px-2 py-1.5 overflow-x-auto">{JSON.stringify(st.customization, null, 2)}</p>
                                 </div>
                               )}
-                              <p className="text-[10px] text-muted-foreground">Draft ID: <span className="font-mono">{draft.id}</span></p>
+                              <div className="flex gap-4 text-[10px] text-muted-foreground">
+                                <span>Draft: <span className="font-mono">{draft.id?.slice(0, 12)}…</span></span>
+                                {draft.session_id && <span>Session: <span className="font-mono">{draft.session_id.slice(0, 12)}…</span></span>}
+                                {draft.user_id && <span>User: <span className="font-mono">{draft.user_id.slice(0, 12)}…</span></span>}
+                              </div>
                             </div>
                           )}
                         </div>
