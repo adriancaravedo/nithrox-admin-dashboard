@@ -50,7 +50,12 @@ const NAV_GROUPS = [
       { to: '/agenda',         icon: Calendar,     label: 'Agenda' },
       { to: '/contracts',      icon: FileText,     label: 'Contratos' },
       { to: '/invoices',       icon: Receipt,      label: 'Facturas' },
-      { to: '/store-config',   icon: ShoppingBag,  label: 'Tienda Online' },
+    ],
+  },
+  {
+    section: 'TIENDA',
+    items: [
+      { to: '/store', icon: ShoppingBag, label: 'Tienda Online' },
     ],
   },
 ]
