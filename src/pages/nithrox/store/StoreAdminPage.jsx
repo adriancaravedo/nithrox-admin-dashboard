@@ -7,6 +7,7 @@ import {
   Loader2, RefreshCw, ChevronDown, ChevronUp, Edit2, Save,
   X, Plus, Trash2, Eye, ShoppingBag, Upload, Check,
   Globe, CreditCard, Zap, ArrowUpRight, MoreHorizontal,
+  Users, MapPin, Activity, Copy, Terminal,
 } from 'lucide-react'
 
 // ── Correct plan defaults ──────────────────────────────────────
@@ -218,8 +219,15 @@ export default function StoreAdminPage() {
       { id, value, updated_at: new Date().toISOString() },
       { onConflict: 'id' }
     )
-    if (error) { toast.error('Error al guardar'); return false }
-    toast.success('Configuración guardada en Supabase')
+    if (error) {
+      const msg = error.message || error.code || 'Error desconocido'
+      toast.error(`Error al guardar: ${msg}`)
+      if (msg.includes('does not exist') || msg.includes('relation')) {
+        toast.error('La tabla store_config no existe. Ve a Config → SQL para crearla.', { duration: 6000 })
+      }
+      return false
+    }
+    toast.success('Guardado en Supabase ✓')
     setConfig(prev => ({ ...prev, [id]: value }))
     return true
   }
@@ -369,10 +377,49 @@ function ResumenTab({ orders, loading, onRefresh }) {
   )
 }
 
+// ── Helpers ────────────────────────────────────────────────────
+function inferFunnelStep(state) {
+  if (!state?.plan) return { step: 0, label: 'Inicio', color: '#9ca3af' }
+  if (state.domain) return { step: 6, label: 'En dominio', color: '#8b5cf6' }
+  if (state.hosting) return { step: 5, label: 'En hosting', color: '#6366f1' }
+  if (state.customization) return { step: 4, label: 'Personalizando', color: '#3b82f6' }
+  if (state.plan) return { step: 2, label: 'Plan elegido', color: '#e8441e' }
+  return { step: 1, label: 'Sin datos', color: '#9ca3af' }
+}
+
 // ── Pedidos tab ────────────────────────────────────────────────
 function PedidosTab({ orders, loading, onRefresh }) {
+  const [view, setView] = useState('orders') // 'orders' | 'tracking'
   const [filter, setFilter] = useState('all')
   const [expanded, setExpanded] = useState(null)
+  const [drafts, setDrafts] = useState([])
+  const [loadingDrafts, setLoadingDrafts] = useState(false)
+  const [expandedDraft, setExpandedDraft] = useState(null)
+
+  useEffect(() => {
+    if (view !== 'tracking') return
+    setLoadingDrafts(true)
+    supabase
+      .from('order_drafts')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error) setDrafts(data || [])
+        setLoadingDrafts(false)
+      })
+  }, [view])
+
+  useEffect(() => {
+    const ch = supabase
+      .channel('admin-order-drafts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_drafts' }, payload => {
+        if (payload.eventType === 'INSERT') setDrafts(prev => [payload.new, ...prev])
+        else if (payload.eventType === 'UPDATE') setDrafts(prev => prev.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d))
+        else if (payload.eventType === 'DELETE') setDrafts(prev => prev.filter(d => d.id !== payload.old.id))
+      })
+      .subscribe()
+    return () => supabase.removeChannel(ch)
+  }, [])
 
   const FILTERS = [
     { id: 'all',        label: 'Todos' },
@@ -395,7 +442,6 @@ function PedidosTab({ orders, loading, onRefresh }) {
       if (!res.ok) throw new Error('Store API error')
       toast.success(`✅ Pago validado: ${order.contacts?.full_name || 'Cliente'}`)
     } catch {
-      // Fallback: update directly in Supabase
       const { error } = await supabase.from('orders').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', order.id)
       if (error) { toast.error('Error al validar'); return }
       toast.success(`✅ Pago validado: ${order.contacts?.full_name || 'Cliente'}`)
@@ -408,6 +454,16 @@ function PedidosTab({ orders, loading, onRefresh }) {
     toast.success(`Estado actualizado: ${STATUS_CONFIG[status]?.label || status}`)
   }
 
+  // Funnel stats from drafts
+  const funnelSteps = [
+    { label: 'Registros totales', count: drafts.length, color: '#6b7280' },
+    { label: 'Eligieron plan', count: drafts.filter(d => d.state?.plan).length, color: '#e8441e' },
+    { label: 'Personalizaron', count: drafts.filter(d => d.state?.customization).length, color: '#3b82f6' },
+    { label: 'Eligieron hosting', count: drafts.filter(d => d.state?.hosting).length, color: '#6366f1' },
+    { label: 'Eligieron dominio', count: drafts.filter(d => d.state?.domain).length, color: '#8b5cf6' },
+    { label: 'Guardaron avance', count: drafts.filter(d => d.user_id).length, color: '#10b981' },
+  ]
+
   if (loading) return <LoadingState />
 
   return (
@@ -415,153 +471,273 @@ function PedidosTab({ orders, loading, onRefresh }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black">Pedidos</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Gestión de pedidos en tiempo real · Supabase Realtime activo</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Tiempo real via Supabase · {orders.length} pedidos · {drafts.length} borradores</p>
         </div>
-        <button onClick={onRefresh} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors">
-          <RefreshCw className="w-3 h-3" /> Actualizar
+        <div className="flex items-center gap-2">
+          <button onClick={onRefresh} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors">
+            <RefreshCw className="w-3 h-3" /> Actualizar
+          </button>
+        </div>
+      </div>
+
+      {/* View toggle */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        <button
+          onClick={() => setView('orders')}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md transition-colors"
+          style={{ background: view === 'orders' ? 'hsl(var(--background))' : 'transparent', color: view === 'orders' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
+        >
+          <Package className="w-3 h-3" /> Pedidos ({orders.length})
+        </button>
+        <button
+          onClick={() => setView('tracking')}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md transition-colors"
+          style={{ background: view === 'tracking' ? 'hsl(var(--background))' : 'transparent', color: view === 'tracking' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
+        >
+          <Activity className="w-3 h-3" /> Seguimiento ({drafts.length})
         </button>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex gap-1.5 flex-wrap">
-        {FILTERS.map(f => {
-          const count = f.id === 'all' ? orders.length : orders.filter(o => o.status === f.id).length
-          return (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className="text-[11px] font-bold px-3 py-1.5 rounded-full border transition-colors"
-              style={{
-                background: filter === f.id ? 'hsl(var(--foreground))' : 'transparent',
-                color: filter === f.id ? 'hsl(var(--background))' : 'hsl(var(--muted-foreground))',
-                borderColor: filter === f.id ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
-              }}
-            >
-              {f.label} {count > 0 && <span className="opacity-60">({count})</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Orders list */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        {filtered.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground py-12">No hay pedidos en esta categoría</p>
-        ) : (
-          <div className="divide-y divide-border">
-            {filtered.map(order => {
-              const isExpanded = expanded === order.id
-              const isManual = !['stripe', 'izipay', 'paypal'].includes(order.payment_method)
-              const needsValidation = order.status === 'validating' && isManual
+      {/* ── ORDERS VIEW ─────────────────────────────────── */}
+      {view === 'orders' && (
+        <>
+          {/* Filter bar */}
+          <div className="flex gap-1.5 flex-wrap">
+            {FILTERS.map(f => {
+              const count = f.id === 'all' ? orders.length : orders.filter(o => o.status === f.id).length
               return (
-                <div key={order.id}>
-                  {/* Row */}
-                  <div
-                    className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors cursor-pointer"
-                    onClick={() => setExpanded(isExpanded ? null : order.id)}
-                  >
-                    {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0 uppercase">
-                      {(order.contacts?.full_name || order.client_name || 'C')[0]}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold truncate">{order.contacts?.full_name || order.client_name || 'Cliente'}</p>
-                        {needsValidation && (
-                          <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase">Comprobante adjunto</span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {order.plan_name} · {order.payment_method || 'Sin método'} · {new Date(order.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
-
-                    {/* Amount */}
-                    <p className="text-sm font-black shrink-0">S/ {Number(order.total_pen || 0).toLocaleString('es-PE')}</p>
-
-                    {/* Status */}
-                    <StatusBadge status={order.status} />
-
-                    {/* Chevron */}
-                    <div className="text-muted-foreground">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
-                  </div>
-
-                  {/* Expanded detail */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 bg-muted/20 border-t border-border space-y-3 pt-3">
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p className="text-muted-foreground mb-0.5">ID del pedido</p>
-                          <p className="font-mono font-semibold">{order.id}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground mb-0.5">Email cliente</p>
-                          <p className="font-semibold">{order.contacts?.email || order.client_email || '—'}</p>
-                        </div>
-                        {order.voucher_url && (
-                          <div className="col-span-2">
-                            <p className="text-muted-foreground mb-1">Comprobante adjunto</p>
-                            <a
-                              href={order.voucher_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline"
-                            >
-                              <Eye className="w-3 h-3" /> Ver comprobante
-                            </a>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex gap-2 flex-wrap pt-1">
-                        {needsValidation && (
-                          <button
-                            onClick={() => validatePayment(order)}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg text-white transition-colors"
-                            style={{ background: '#10b981' }}
-                          >
-                            <Check className="w-3 h-3" /> Validar pago
-                          </button>
-                        )}
-                        {order.status === 'active' && (
-                          <button
-                            onClick={() => updateStatus(order.id, 'suspended')}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
-                          >
-                            <X className="w-3 h-3" /> Suspender
-                          </button>
-                        )}
-                        {order.status === 'suspended' && (
-                          <button
-                            onClick={() => updateStatus(order.id, 'active')}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
-                          >
-                            <Check className="w-3 h-3" /> Reactivar
-                          </button>
-                        )}
-                        {order.status === 'pending' && (
-                          <button
-                            onClick={() => updateStatus(order.id, 'active')}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg text-white transition-colors"
-                            style={{ background: '#e8441e' }}
-                          >
-                            <Check className="w-3 h-3" /> Activar manualmente
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id)}
+                  className="text-[11px] font-bold px-3 py-1.5 rounded-full border transition-colors"
+                  style={{
+                    background: filter === f.id ? 'hsl(var(--foreground))' : 'transparent',
+                    color: filter === f.id ? 'hsl(var(--background))' : 'hsl(var(--muted-foreground))',
+                    borderColor: filter === f.id ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                  }}
+                >
+                  {f.label} {count > 0 && <span className="opacity-60">({count})</span>}
+                </button>
               )
             })}
           </div>
-        )}
-      </div>
+
+          {/* Orders list */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            {filtered.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-12">No hay pedidos en esta categoría</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {filtered.map(order => {
+                  const isExpanded = expanded === order.id
+                  const isManual = !['stripe', 'izipay', 'paypal'].includes(order.payment_method)
+                  const needsValidation = order.status === 'validating' && isManual
+                  return (
+                    <div key={order.id}>
+                      <div
+                        className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => setExpanded(isExpanded ? null : order.id)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0 uppercase">
+                          {(order.contacts?.full_name || order.client_name || 'C')[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold truncate">{order.contacts?.full_name || order.client_name || 'Cliente'}</p>
+                            {needsValidation && (
+                              <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase">Comprobante adjunto</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {order.plan_name} · {order.payment_method || 'Sin método'} · {new Date(order.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+                        <p className="text-sm font-black shrink-0">S/ {Number(order.total_pen || 0).toLocaleString('es-PE')}</p>
+                        <StatusBadge status={order.status} />
+                        <div className="text-muted-foreground">
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 bg-muted/20 border-t border-border space-y-3 pt-3">
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <p className="text-muted-foreground mb-0.5">ID del pedido</p>
+                              <p className="font-mono font-semibold">{order.id}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground mb-0.5">Email cliente</p>
+                              <p className="font-semibold">{order.contacts?.email || order.client_email || '—'}</p>
+                            </div>
+                            {order.voucher_url && (
+                              <div className="col-span-2">
+                                <p className="text-muted-foreground mb-1">Comprobante adjunto</p>
+                                <a href={order.voucher_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline">
+                                  <Eye className="w-3 h-3" /> Ver comprobante
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2 flex-wrap pt-1">
+                            {needsValidation && (
+                              <button onClick={() => validatePayment(order)} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg text-white transition-colors" style={{ background: '#10b981' }}>
+                                <Check className="w-3 h-3" /> Validar pago
+                              </button>
+                            )}
+                            {order.status === 'active' && (
+                              <button onClick={() => updateStatus(order.id, 'suspended')} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors">
+                                <X className="w-3 h-3" /> Suspender
+                              </button>
+                            )}
+                            {order.status === 'suspended' && (
+                              <button onClick={() => updateStatus(order.id, 'active')} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors">
+                                <Check className="w-3 h-3" /> Reactivar
+                              </button>
+                            )}
+                            {order.status === 'pending' && (
+                              <button onClick={() => updateStatus(order.id, 'active')} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg text-white transition-colors" style={{ background: '#e8441e' }}>
+                                <Check className="w-3 h-3" /> Activar manualmente
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── TRACKING VIEW ───────────────────────────────── */}
+      {view === 'tracking' && (
+        <>
+          {loadingDrafts ? (
+            <LoadingState />
+          ) : (
+            <>
+              {/* Funnel stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {funnelSteps.map((step, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[11px] text-muted-foreground font-medium">{step.label}</p>
+                      <div className="w-2 h-2 rounded-full" style={{ background: step.color }} />
+                    </div>
+                    <p className="text-2xl font-black">{step.count}</p>
+                    {i > 0 && funnelSteps[0].count > 0 && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{Math.round(step.count / funnelSteps[0].count * 100)}% del total</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Drafts list */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Borradores guardados</p>
+                  <span className="text-[10px] text-muted-foreground">{drafts.length} registros · Realtime activo</span>
+                </div>
+                {drafts.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-10">No hay borradores guardados aún</p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {drafts.map(draft => {
+                      const st = draft.state || {}
+                      const { step, label, color } = inferFunnelStep(st)
+                      const isOpen = expandedDraft === draft.id
+                      const planName = st.plan?.name || '—'
+                      const hostingName = st.hosting?._noHosting ? 'Sin hosting' : (typeof st.hosting?.name === 'object' ? st.hosting.name?.es : st.hosting?.name) || '—'
+                      const domainName = st.domain?.full || '—'
+                      const addonCount = (st.addons || []).length
+                      const updatedAgo = draft.updated_at ? new Date(draft.updated_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+                      return (
+                        <div key={draft.id}>
+                          <div
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => setExpandedDraft(isOpen ? null : draft.id)}
+                          >
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0" style={{ background: color }}>
+                              {step}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold truncate">{draft.user_id ? `User ${draft.user_id.slice(0, 8)}…` : 'Anónimo'}</p>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: color + '20', color }}>
+                                  {label}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                {planName !== '—' && `Plan: ${planName}`}{addonCount > 0 && ` · ${addonCount} addon${addonCount > 1 ? 's' : ''}`} · {updatedAgo}
+                              </p>
+                            </div>
+                            <div className="text-muted-foreground">
+                              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </div>
+                          </div>
+
+                          {isOpen && (
+                            <div className="px-4 pb-4 bg-muted/10 border-t border-border pt-3 space-y-3">
+                              <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Plan</p>
+                                  <p className="font-semibold">{planName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Precio plan</p>
+                                  <p className="font-semibold">{st.plan ? `S/ ${st.plan.price_pen}` : '—'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Hosting</p>
+                                  <p className="font-semibold">{hostingName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Dominio</p>
+                                  <p className="font-semibold">{domainName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Idioma / Moneda</p>
+                                  <p className="font-semibold">{st.lang?.toUpperCase() || 'ES'} · {st.currency || 'PEN'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Promo</p>
+                                  <p className="font-semibold">{st.promoCode || '—'} {st.promoDiscount > 0 ? `(${st.promoDiscount}%)` : ''}</p>
+                                </div>
+                              </div>
+                              {(st.addons || []).length > 0 && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">Addons seleccionados</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {st.addons.map((a, i) => (
+                                      <span key={i} className="text-[11px] bg-muted px-2 py-0.5 rounded-full font-medium">
+                                        {typeof a.name === 'object' ? (a.name?.es || a.name?.en) : a.name} · S/{a.price_pen}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {st.customization && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">Personalización</p>
+                                  <p className="text-xs font-mono bg-muted rounded px-2 py-1.5 overflow-x-auto">{JSON.stringify(st.customization, null, 2)}</p>
+                                </div>
+                              )}
+                              <p className="text-[10px] text-muted-foreground">Draft ID: <span className="font-mono">{draft.id}</span></p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -1085,6 +1261,56 @@ function ConfigTab({ methods, onSave, loading }) {
           >
             <ArrowUpRight className="w-3 h-3" /> Ver config actual de la tienda
           </a>
+        </div>
+      </div>
+
+      {/* SQL Migration */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+          <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
+          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">SQL — Crear tablas si no existen</p>
+        </div>
+        <div className="px-4 py-4 space-y-3">
+          <p className="text-xs text-muted-foreground">Si "Guardar" muestra error de tabla no encontrada, ejecuta este SQL en el editor de Supabase (Database → SQL Editor):</p>
+          <pre className="text-[10px] font-mono bg-muted rounded-lg p-3 overflow-x-auto leading-relaxed text-muted-foreground">{`-- Tabla de configuración de la tienda
+create table if not exists store_config (
+  id text primary key,
+  value jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table store_config enable row level security;
+create policy if not exists "Anyone can read store_config"
+  on store_config for select using (true);
+create policy if not exists "Admins can manage store_config"
+  on store_config for all
+  using (exists (
+    select 1 from profiles p
+    where p.id = auth.uid() and p.role = 'admin'
+  ))
+  with check (exists (
+    select 1 from profiles p
+    where p.id = auth.uid() and p.role = 'admin'
+  ));
+
+-- Tabla de borradores de checkout
+create table if not exists order_drafts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id),
+  state jsonb,
+  updated_at timestamptz default now()
+);
+alter table order_drafts enable row level security;
+create policy if not exists "Anyone can upsert drafts"
+  on order_drafts for all using (true) with check (true);`}</pre>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`create table if not exists store_config (id text primary key, value jsonb not null, updated_at timestamptz default now());\nalter table store_config enable row level security;\ncreate policy if not exists "Anyone can read store_config" on store_config for select using (true);\ncreate policy if not exists "Admins can manage store_config" on store_config for all using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')) with check (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));`)
+              toast.success('SQL copiado al portapapeles')
+            }}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+          >
+            <Copy className="w-3 h-3" /> Copiar SQL
+          </button>
         </div>
       </div>
     </div>
