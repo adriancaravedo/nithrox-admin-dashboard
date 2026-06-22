@@ -71,7 +71,10 @@ function RequireAuth({ children, adminOnly = false }) {
   const { user, profile, loading } = useAuth()
   if (loading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
+  // Still waiting for profile to load from DB
   if (adminOnly && !profile) return <Loading />
+  if (adminOnly && profile.role === '_loading') return <Loading />
+  // Profile loaded but not admin
   if (adminOnly && profile.role !== 'admin') return <Navigate to="/portal" replace />
   return children
 }
@@ -79,9 +82,11 @@ function RequireAuth({ children, adminOnly = false }) {
 function RequireGuest({ children }) {
   const { user, profile, loading } = useAuth()
   if (loading) return <Loading />
-  if (user && profile) {
+  // Don't redirect if profile is still loading from DB
+  if (user && profile && profile.role !== '_loading') {
     return <Navigate to={profile.role === 'admin' ? '/dashboard' : '/portal'} replace />
   }
+  if (user && !profile) return <Loading />
   return children
 }
 

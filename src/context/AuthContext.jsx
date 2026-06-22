@@ -4,15 +4,11 @@ import { db } from '../lib/db'
 
 const AuthContext = createContext(null)
 
-const withTimeout = (promise, ms) =>
-  Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))])
-
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Look up CRM contact by email; if found, write contact_id back to profile row
   const autoLinkContact = async (email, profileId) => {
     if (!email) return null
     try {
@@ -27,41 +23,54 @@ export function AuthProvider({ children }) {
 
   const loadProfile = async (authUser) => {
     if (!authUser) { setProfile(null); return }
-    try {
-      const { data, error } = await withTimeout(
-        supabase.from('profiles').select('*').eq('id', authUser.id).single(),
-        5000
-      )
-      if (error || !data) {
-        const newProfile = {
-          id: authUser.id,
-          email: authUser.email,
-          name: authUser.user_metadata?.name || authUser.email,
-          role: 'client',
-        }
-        supabase.from('profiles').upsert(newProfile).then() // fire-and-forget
-        setProfile(newProfile)
-        // Try to auto-link a CRM contact on first login
-        autoLinkContact(authUser.email, authUser.id)
-      } else {
-        // Auto-link contact if client profile has no contact_id yet
-        if (data.role === 'client' && !data.contact_id) {
-          const linked = await autoLinkContact(data.email, data.id)
-          if (linked) {
-            setProfile({ ...data, contact_id: linked })
-            return
-          }
-        }
-        setProfile(data)
+
+    // maybeSingle() returns {data: null, error: null} when 0 rows — no exception
+    // single() throws on 0 rows, causing the old code to treat admin as 'client'
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .maybeSingle()
+
+    if (data) {
+      // Profile found in DB — use it exactly as-is
+      if (data.role === 'client' && !data.contact_id) {
+        const linked = await autoLinkContact(data.email, data.id)
+        if (linked) { setProfile({ ...data, contact_id: linked }); return }
       }
-    } catch {
-      setProfile({ id: authUser.id, email: authUser.email, role: 'client' })
+      setProfile(data)
+      return
     }
+
+    if (error) {
+      // DB error (RLS blocking, network, etc.) — do NOT default to 'client'
+      // The profile EXISTS in the DB but we can't read it right now.
+      // Use app_metadata role if Supabase has synced it, otherwise stay unknown.
+      console.warn('[AuthContext] Could not read profile:', error.message)
+      const appRole = authUser.app_metadata?.role || null
+      setProfile({
+        id:    authUser.id,
+        email: authUser.email,
+        name:  authUser.user_metadata?.name || authUser.email,
+        role:  appRole || '_loading',   // never 'client' on error
+      })
+      return
+    }
+
+    // data === null, error === null → genuinely new user with no profile row yet
+    const newProfile = {
+      id:    authUser.id,
+      email: authUser.email,
+      name:  authUser.user_metadata?.name || authUser.email,
+      role:  'client',
+    }
+    supabase.from('profiles').upsert(newProfile).then()
+    setProfile(newProfile)
+    autoLinkContact(authUser.email, authUser.id)
   }
 
   useEffect(() => {
-    // Hard fallback: never stay stuck more than 6s regardless of what Supabase does
-    const fallback = setTimeout(() => setLoading(false), 6000)
+    const fallback = setTimeout(() => setLoading(false), 8000)
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(fallback)
@@ -76,14 +85,13 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'INITIAL_SESSION') return
       setUser(session?.user ?? null)
-      loadProfile(session?.user ?? null) // no await — don't block on profile for subsequent events
+      loadProfile(session?.user ?? null)
     })
 
     return () => { clearTimeout(fallback); subscription.unsubscribe() }
   }, [])
 
-  // Realtime: watch own profile row so contact_id updates (from admin side) are
-  // reflected immediately — no page refresh needed
+  // Realtime: watch own profile row for live role/contact_id updates
   useEffect(() => {
     if (!user?.id) return
     const channel = supabase
