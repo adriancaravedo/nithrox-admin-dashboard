@@ -29,5 +29,24 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ matchUtilities, addUtilities }) {
+      addUtilities({
+        '.mask-alpha': { 'mask-mode': 'alpha', '-webkit-mask-mode': 'alpha' },
+        '.mask-intersect': { 'mask-composite': 'intersect', '-webkit-mask-composite': 'source-in' },
+        '.mask-no-clip': { 'mask-clip': 'no-clip', '-webkit-mask-clip': 'no-clip' },
+        '.mask-no-repeat': { 'mask-repeat': 'no-repeat', '-webkit-mask-repeat': 'no-repeat' },
+      })
+      matchUtilities({
+        'mask-position': (value) => ({
+          'mask-position': value.replace(/_/g, ' '),
+          '-webkit-mask-position': value.replace(/_/g, ' '),
+        }),
+        'mask-size': (value) => ({
+          'mask-size': value.replace(/_/g, ' '),
+          '-webkit-mask-size': value.replace(/_/g, ' '),
+        }),
+      })
+    },
+  ],
 }

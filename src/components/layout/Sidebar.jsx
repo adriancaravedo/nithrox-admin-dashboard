@@ -9,7 +9,7 @@ import {
   Zap, ClipboardList, FileCheck, Calendar, FileText,
   Receipt, Bell, Settings, LogOut, ChevronDown,
   ChevronsUpDown, Menu, X, UserRound,
-  Share2, Mail, Store
+  Share2, Mail, Store, ShoppingBag
 } from 'lucide-react'
 
 // ── Navigation structure ──────────────────────────────────────
@@ -50,6 +50,7 @@ const NAV_GROUPS = [
       { to: '/agenda',         icon: Calendar,     label: 'Agenda' },
       { to: '/contracts',      icon: FileText,     label: 'Contratos' },
       { to: '/invoices',       icon: Receipt,      label: 'Facturas' },
+      { to: '/store-config',   icon: ShoppingBag,  label: 'Tienda Online' },
     ],
   },
 ]

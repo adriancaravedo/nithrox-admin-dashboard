@@ -53,6 +53,7 @@ import InvoicesPage from './pages/nithrox/invoices/InvoicesPage'
 import SocialPage from './pages/nithrox/social/SocialPage'
 import EmailMarketingPage from './pages/nithrox/email/EmailMarketingPage'
 import EmployeesPage from './pages/nithrox/employees/EmployeesPage'
+import StoreConfigPage from './pages/nithrox/store/StoreConfigPage'
 
 function Loading() {
   return (
@@ -147,6 +148,7 @@ export default function App() {
                 <Route path="/agenda" element={<AgendaPage />} />
                 <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
+                <Route path="/store-config" element={<StoreConfigPage />} />
 
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>

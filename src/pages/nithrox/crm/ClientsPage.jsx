@@ -4,18 +4,21 @@ import { Button } from '../../../components/ui/button'
 import ContactsTab from './ContactsTab'
 import CompaniesTab from './CompaniesTab'
 import DealsTab from './DealsTab'
+import ServicesTab from './ServicesTab'
 import { AddContactDialog, AddCompanyDialog, AddDealDialog } from './AddForms'
 
 const TABS = [
-  { id: 'contacts', label: 'Contactos' },
+  { id: 'contacts',  label: 'Contactos' },
   { id: 'companies', label: 'Empresas' },
-  { id: 'deals', label: 'Negocios' },
+  { id: 'deals',     label: 'Negocios' },
+  { id: 'services',  label: 'Servicios' },
 ]
 
 const ADD_LABELS = {
-  contacts: '+ Agregar Contacto',
+  contacts:  '+ Agregar Contacto',
   companies: '+ Agregar Empresa',
-  deals: '+ Agregar Deal',
+  deals:     '+ Agregar Deal',
+  services:  '',
 }
 
 export default function ClientsPage() {
@@ -48,9 +51,11 @@ export default function ClientsPage() {
         leftContent={tabSelector}
         actions={
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => setShowAdd(true)} className="text-xs rounded-full px-4">
-              {ADD_LABELS[activeTab]}
-            </Button>
+            {activeTab !== 'services' && (
+              <Button size="sm" onClick={() => setShowAdd(true)} className="text-xs rounded-full px-4">
+                {ADD_LABELS[activeTab]}
+              </Button>
+            )}
             {(activeTab === 'contacts' || activeTab === 'companies' || activeTab === 'deals') && (
               <Button size="sm" variant="outline" className="text-xs rounded-full px-4 hidden sm:flex" onClick={() => setShowAddSection(true)}>
                 + Agregar Sección
@@ -85,6 +90,7 @@ export default function ClientsPage() {
           {activeTab === 'contacts' && <ContactsTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
           {activeTab === 'companies' && <CompaniesTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
           {activeTab === 'deals' && <DealsTab showAddSection={showAddSection} onCloseAddSection={() => setShowAddSection(false)} />}
+          {activeTab === 'services' && <ServicesTab />}
         </div>
       </div>
 

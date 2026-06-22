@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../../stores/useStore'
+import { supabase } from '../../../lib/supabase'
 import { formatRelative, formatCurrency } from '../../../lib/utils'
 import Topbar from '../../../components/layout/Topbar'
-import { TrendingUp, TrendingDown, ArrowRight, CheckCircle2, Circle, AlertTriangle, Clock, Plus } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowRight, CheckCircle2, Circle, AlertTriangle, Clock, Plus, ShoppingBag, ExternalLink } from 'lucide-react'
 
 // Tiny sparkline SVG
 function Sparkline({ data, color = '#18181b', height = 32 }) {
@@ -53,6 +54,15 @@ export default function Dashboard() {
   const activeProjects = projects.filter(p => !p._deleted)
   const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState('')
+  const [storeOrders, setStoreOrders] = useState([])
+
+  // Load pending store orders for the banner
+  useEffect(() => {
+    supabase.from('orders').select('id, plan_name, total_pen, payment_method, status, created_at')
+      .eq('status', 'pending').order('created_at', { ascending: false }).limit(5)
+      .then(({ data }) => { if (data) setStoreOrders(data) })
+      .catch(() => {})
+  }, [])
 
   // Remove clock interval - no more time tracking
   const greet = () => {
@@ -124,6 +134,15 @@ export default function Dashboard() {
                 <ArrowRight className="w-4 h-4 text-blue-600" />
               </div>
             )}
+            {storeOrders.length > 0 && (
+              <div onClick={() => navigate('/store-config')} className="flex items-center gap-3 px-4 py-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-xl cursor-pointer hover:shadow-sm transition-all">
+                <ShoppingBag className="w-4 h-4 text-orange-600 shrink-0" />
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-400 flex-1">
+                  {storeOrders.length} pedido{storeOrders.length > 1 ? 's' : ''} de la tienda esperando validación
+                </p>
+                <ArrowRight className="w-4 h-4 text-orange-600" />
+              </div>
+            )}
             {unreadMessages > 0 && (
               <div onClick={() => navigate('/messages')} className="flex items-center gap-3 px-4 py-3 bg-muted border border-border rounded-xl cursor-pointer hover:shadow-sm transition-all">
                 <span className="text-base">💬</span>
@@ -133,6 +152,34 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        {/* Store quick-access card */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div onClick={() => navigate('/store-config')} className="col-span-2 flex items-center gap-4 bg-background border border-border rounded-xl p-4 cursor-pointer hover:shadow-sm hover:border-foreground/20 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-5 h-5 text-orange-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tienda Online</p>
+              <p className="text-sm font-semibold truncate">
+                {storeOrders.length > 0
+                  ? `${storeOrders.length} pedido${storeOrders.length > 1 ? 's' : ''} pendiente${storeOrders.length > 1 ? 's' : ''}`
+                  : 'Gestionar planes, pedidos y keys'}
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </div>
+          <a href={process.env.REACT_APP_STORE_URL || '#'} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-background border border-border rounded-xl p-4 hover:shadow-sm hover:border-foreground/20 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+              <ExternalLink className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Ver tienda</p>
+              <p className="text-sm font-semibold">nithrox-store.vercel.app</p>
+            </div>
+          </a>
+        </div>
 
         {/* Metric cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

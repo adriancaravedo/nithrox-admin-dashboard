@@ -188,10 +188,22 @@ const API_KEY_GROUPS = [
 ]
 
 const ORDER_STATUS = {
-  pending:   { label: 'Pendiente',  cls: 'bg-yellow-100 text-yellow-700' },
-  paid:      { label: 'Pagado',     cls: 'bg-blue-100 text-blue-600' },
-  active:    { label: 'Activo',     cls: 'bg-green-100 text-green-600' },
-  cancelled: { label: 'Cancelado',  cls: 'bg-red-100 text-red-500' },
+  pending:   { label: 'Pendiente',    cls: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  paid:      { label: 'Pagado',       cls: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+  active:    { label: 'Activo',       cls: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+  cancelled: { label: 'Cancelado',    cls: 'bg-red-100 text-red-500 dark:bg-red-900/30 dark:text-red-400' },
+  validating: { label: 'Validando',   cls: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
+}
+
+const MANUAL_METHODS = ['transfer', 'transferencia', 'crypto', 'nowpayments']
+const METHOD_ICONS   = {
+  stripe:      '💳',
+  izipay:      '🏦',
+  paypal:      '🅿️',
+  transfer:    '🏧',
+  transferencia: '🏧',
+  crypto:      '₿',
+  nowpayments: '₿',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -943,15 +955,49 @@ function PedidosTab() {
   const validatePayment = async (order) => {
     setActionLoading(a => ({ ...a, [order.id]: 'validating' }))
     try {
-      const { error } = await supabase
+      // Step 1: Mark as validating immediately
+      await supabase
         .from('orders')
-        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .update({ status: 'validating' })
         .eq('id', order.id)
-      if (error) throw error
-      toast.success(`Pago de #${order.id.slice(-6).toUpperCase()} validado`)
+
+      // Step 2: Call store's validate API to trigger full provisioning
+      // (hosting on 20i, domain on RealTime, CRM activation)
+      const storeUrl = import.meta.env.VITE_STORE_URL || 'https://nithrox-store.vercel.app'
+      const adminKey = import.meta.env.VITE_ADMIN_VALIDATION_KEY || 'nithrox-admin-2024'
+
+      let provisioningResult = null
+      try {
+        const res = await fetch(`${storeUrl}/api/orders/validate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: order.id, admin_key: adminKey }),
+        })
+        if (res.ok) {
+          provisioningResult = await res.json()
+        }
+      } catch (provErr) {
+        console.warn('[validate] Store API unreachable, marking paid manually:', provErr)
+        // Fallback: just mark as paid in Supabase directly
+        await supabase
+          .from('orders')
+          .update({ status: 'paid', paid_at: new Date().toISOString() })
+          .eq('id', order.id)
+      }
+
+      const shortId = `#${order.id.slice(-6).toUpperCase()}`
+      if (provisioningResult?.success) {
+        const details = [
+          provisioningResult.hosting_provisioned ? '✓ Hosting activado' : null,
+          provisioningResult.domain_registered   ? '✓ Dominio registrado' : null,
+        ].filter(Boolean).join(' · ')
+        toast.success(`Pago ${shortId} validado${details ? ` · ${details}` : ''}`)
+      } else {
+        toast.success(`Pago ${shortId} validado. Provisioning en proceso.`)
+      }
       loadOrders()
     } catch (err) {
-      toast.error(`Error: ${err.message}`)
+      toast.error(`Error al validar: ${err.message}`)
     } finally {
       setActionLoading(a => ({ ...a, [order.id]: null }))
     }
@@ -981,8 +1027,33 @@ function PedidosTab() {
     return acc
   }, {})
 
+  const manualPending = orders.filter(o => o.status === 'pending' && MANUAL_METHODS.includes(o.payment_method))
+
   return (
     <div className="space-y-5">
+      {/* Banner: manual payments pending validation */}
+      {manualPending.length > 0 && (
+        <div className="flex items-center gap-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl px-4 py-3">
+          <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-800/40 flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-4 h-4 text-orange-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-orange-700 dark:text-orange-400">
+              {manualPending.length} pago{manualPending.length > 1 ? 's' : ''} manual{manualPending.length > 1 ? 'es' : ''} pendiente{manualPending.length > 1 ? 's' : ''} de validación
+            </p>
+            <p className="text-xs text-orange-600/70 dark:text-orange-400/70">
+              Transferencia o cripto — verifica el comprobante y haz clic en "Validar pago"
+            </p>
+          </div>
+          <button
+            onClick={() => setFilter('pending')}
+            className="text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-100 dark:bg-orange-800/40 px-3 py-1.5 rounded-lg flex-shrink-0"
+          >
+            Ver pendientes
+          </button>
+        </div>
+      )}
+
       {/* Filter + reload */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1.5 flex-wrap">
@@ -1046,22 +1117,42 @@ function PedidosTab() {
                   const st = ORDER_STATUS[order.status] || { label: order.status, cls: 'bg-muted text-muted-foreground' }
                   const isLoading = actionLoading[order.id]
                   return (
-                    <tr key={order.id} className="hover:bg-accent/20 transition-colors">
+                    <tr key={order.id} className={`hover:bg-accent/20 transition-colors ${order.status === 'pending' && MANUAL_METHODS.includes(order.payment_method) ? 'bg-orange-50/40 dark:bg-orange-900/10' : ''}`}>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-xs font-bold">#{order.id.slice(-6).toUpperCase()}</span>
+                        <div>
+                          <span className="font-mono text-xs font-bold">#{order.id.slice(-6).toUpperCase()}</span>
+                          {order.items?.is_phased && (
+                            <div className="text-[9px] text-orange-500 font-bold mt-0.5 uppercase tracking-wide">4 fases</div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-bold truncate max-w-[120px]">{order.profiles?.name || '—'}</p>
                         <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">{order.profiles?.email}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-xs truncate max-w-[100px]">{order.plan_name || order.plan_id || '—'}</p>
+                        <div>
+                          <p className="text-xs font-bold truncate max-w-[100px]">{order.plan_name || order.plan_id || '—'}</p>
+                          {order.items?.first_payment_pen && order.items?.first_payment_pen !== order.total_pen && (
+                            <p className="text-[10px] text-orange-500 font-bold">1er pago: S/ {parseFloat(order.items.first_payment_pen || 0).toLocaleString('es-PE')}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-bold">S/ {parseFloat(order.total || 0).toLocaleString('es-PE')}</span>
+                        <div>
+                          <span className="text-xs font-bold">S/ {parseFloat(order.total_pen || order.total || 0).toLocaleString('es-PE')}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground capitalize">{order.payment_method || '—'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span>{METHOD_ICONS[order.payment_method] || '💳'}</span>
+                          <div>
+                            <span className="text-xs capitalize">{order.payment_method || '—'}</span>
+                            {MANUAL_METHODS.includes(order.payment_method) && (
+                              <div className="text-[9px] text-orange-500 font-bold">Manual</div>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${st.cls}`}>{st.label}</span>
@@ -1073,17 +1164,21 @@ function PedidosTab() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          {order.status === 'pending' && (
+                          {(order.status === 'pending' || order.status === 'validating') && (
                             <button
                               onClick={() => validatePayment(order)}
                               disabled={!!isLoading}
-                              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                              className={`flex items-center gap-1 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                                MANUAL_METHODS.includes(order.payment_method)
+                                  ? 'bg-orange-500 hover:bg-orange-600'
+                                  : 'bg-blue-600 hover:bg-blue-700'
+                              }`}
                             >
                               {isLoading === 'validating' ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                              Validar
+                              {MANUAL_METHODS.includes(order.payment_method) ? 'Validar pago' : 'Activar'}
                             </button>
                           )}
-                          {['pending', 'paid'].includes(order.status) && (
+                          {['pending', 'paid', 'validating'].includes(order.status) && (
                             <button
                               onClick={() => cancelOrder(order)}
                               disabled={!!isLoading}
