@@ -339,6 +339,17 @@ export const useStore = create((set, get) => ({
     })
   },
 
+  addOrRefreshConversation: (rawConv) => {
+    const shaped = shapeConversation(rawConv)
+    set(s => {
+      const exists = s.messages.find(m => m.id === shaped.id)
+      if (exists) {
+        return { messages: s.messages.map(m => m.id === shaped.id ? { ...m, ...shaped } : m) }
+      }
+      return { messages: [shaped, ...s.messages] }
+    })
+  },
+
   appendRealtimeMessage: (conversationId, msg) => {
     set(s => ({
       messages: s.messages.map(m => m.id === conversationId

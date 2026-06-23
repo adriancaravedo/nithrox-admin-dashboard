@@ -44,7 +44,7 @@ export function usePortalData(contactId, userId) {
         ] = await Promise.all([
           contactId ? db.projects.forClient(contactId) : Promise.resolve({ data: null }),
           db.conversations.forClient(contactId, userId),
-          contactId ? db.contracts.forClient(contactId) : Promise.resolve({ data: [] }),
+          db.contracts.forClient(contactId, userId),
           contactId ? db.proposals.forClient(contactId) : Promise.resolve({ data: [] }),
           contactId ? db.meetings.forContact(contactId) : Promise.resolve({ data: [] }),
           db.settings.get('chat'),

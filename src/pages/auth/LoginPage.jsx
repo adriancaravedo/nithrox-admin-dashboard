@@ -16,8 +16,13 @@ export default function LoginPage() {
     setLoading(true); setError(null)
     try {
       await login(email.trim(), password)
-    } catch {
-      setError('Email o contraseña incorrectos')
+    } catch (err) {
+      const msg = err?.message || ''
+      if (msg.toLowerCase().includes('email not confirmed')) {
+        setError('confirm')
+      } else {
+        setError('credentials')
+      }
       toast.error('Error al ingresar')
     } finally {
       setLoading(false)
@@ -57,10 +62,32 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            {error && (
+            {error === 'credentials' && (
               <div className="flex items-center gap-2 px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-xl">
                 <span className="text-red-500">⚠</span>
-                <p className="text-xs text-red-700 font-medium">{error}</p>
+                <p className="text-xs text-red-700 font-medium">Email o contraseña incorrectos</p>
+              </div>
+            )}
+            {error === 'confirm' && (
+              <div className="px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                <p className="text-xs text-amber-800 font-semibold">Debes verificar tu correo antes de ingresar.</p>
+                <p className="text-xs text-amber-700">
+                  Revisa tu bandeja de entrada (y spam) para el correo de verificación de Nithrox.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const { createClient } = await import('@supabase/supabase-js')
+                      const sb = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
+                      await sb.auth.resend({ type: 'signup', email: email.trim() })
+                      toast.success('Correo de verificación reenviado')
+                    } catch { toast.error('No se pudo reenviar') }
+                  }}
+                  className="text-xs text-amber-900 font-bold underline underline-offset-2"
+                >
+                  Reenviar correo de verificación →
+                </button>
               </div>
             )}
             <button type="submit" disabled={loading}

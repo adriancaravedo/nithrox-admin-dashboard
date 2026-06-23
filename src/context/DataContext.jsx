@@ -38,21 +38,43 @@ export function DataProvider({ children }) {
     ])
   }, [loading, user?.id, profile?.role])
 
-  // Realtime: subscribe to new messages (admin side)
+  // Realtime: subscribe to new messages + new conversations (admin side)
   useEffect(() => {
     if (!user || profile?.role !== 'admin') return
 
     const channel = supabase
-      .channel('realtime-messages')
+      .channel('realtime-admin')
+      // New message from a client
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
+        async (payload) => {
           const msg = payload.new
-          // Only append if it came from a client (admin sent it optimistically already)
-          if (msg.from_role === 'client') {
+          if (msg.from_role !== 'client') return
+          const found = useStore.getState().messages.find(m => m.id === msg.conversation_id)
+          if (found) {
             appendRealtimeMessage(msg.conversation_id, msg)
+          } else {
+            // Conversation not in store yet — fetch it and add
+            const { db } = await import('../lib/db')
+            const { data } = await db.conversations.get(msg.conversation_id)
+            if (data) useStore.getState().addOrRefreshConversation(data)
           }
+        }
+      )
+      // New conversation created by a client
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'conversations' },
+        async (payload) => {
+          const conv = payload.new
+          if (!conv?.id) return
+          // Short delay to let messages insert first
+          setTimeout(async () => {
+            const { db } = await import('../lib/db')
+            const { data } = await db.conversations.get(conv.id)
+            if (data) useStore.getState().addOrRefreshConversation(data)
+          }, 500)
         }
       )
       .subscribe()

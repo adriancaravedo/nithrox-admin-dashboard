@@ -109,7 +109,15 @@ export const db = {
     create: (data) => supabase.from('contracts').insert(data).select().single(),
     update: (id, data) => supabase.from('contracts').update(data).eq('id', id).select().single(),
     delete: (id) => supabase.from('contracts').delete().eq('id', id),
-    forClient: (contactId) => supabase.from('contracts').select('*').eq('contact_id', contactId).order('created_at', { ascending: false }),
+    forClient: async (contactId, userId) => {
+      if (contactId) {
+        return supabase.from('contracts').select('*').eq('contact_id', contactId).order('created_at', { ascending: false })
+      }
+      if (userId) {
+        return supabase.from('contracts').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+      }
+      return { data: [], error: null }
+    },
   },
 
   // ── Proposals ──────────────────────────────────────────────
