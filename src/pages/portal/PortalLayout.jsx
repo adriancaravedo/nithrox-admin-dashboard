@@ -3,12 +3,13 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, FolderKanban, CreditCard,
-  FileText, MessageSquare, LogOut, Menu, X, Calendar
+  FileText, MessageSquare, LogOut, Menu, X, Calendar, Server
 } from 'lucide-react'
 
 const NAV = [
   { to: '/portal',             label: 'Dashboard',    icon: LayoutDashboard, end: true },
   { to: '/portal/proyecto',    label: 'Mi proyecto',  icon: FolderKanban },
+  { to: '/portal/hosting',     label: 'Mi Hosting',   icon: Server },
   { to: '/portal/pagos',       label: 'Pagos',        icon: CreditCard },
   { to: '/portal/documentos',  label: 'Documentos',   icon: FileText },
   { to: '/portal/contratos',   label: 'Contratos',    icon: FileText },

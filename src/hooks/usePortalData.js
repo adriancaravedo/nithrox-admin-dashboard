@@ -127,14 +127,52 @@ export function usePortalData(contactId, userId) {
   }, [])
 
   const signContract = async (contractId, sig, currentData) => {
+    const signedAt = new Date().toLocaleDateString('es-PE')
+    const updatedData = { ...currentData, client_signature: sig }
+
     const { data } = await db.contracts.update(contractId, {
       status: 'client_signed',
-      client_signed_at: new Date().toLocaleDateString('es-PE'),
-      data: { ...currentData, client_signature: sig },
+      client_signed_at: signedAt,
+      data: updatedData,
     })
+
     if (data) {
-      setContracts(prev => prev.map(c => c.id === contractId ? { ...c, status: 'client_signed', data: { ...c.data, client_signature: sig } } : c))
+      setContracts(prev => prev.map(c =>
+        c.id === contractId ? { ...c, status: 'client_signed', data: updatedData } : c
+      ))
+
+      // Generate PDF + email in background
+      try {
+        const { generateAndUploadContractPdf } = await import('../lib/generateContractPdf')
+        const contractObj = { id: contractId, data: updatedData }
+        const pdfUrl = await generateAndUploadContractPdf(contractObj, sig)
+
+        // Save pdf_url to DB
+        await db.contracts.update(contractId, { pdf_url: pdfUrl })
+        setContracts(prev => prev.map(c =>
+          c.id === contractId ? { ...c, pdf_url: pdfUrl } : c
+        ))
+
+        // Send email notification
+        const clientEmail = profile?.email || user?.email
+        if (clientEmail && pdfUrl) {
+          await fetch(`${import.meta.env.VITE_STORE_URL || 'https://checkout.nithrox.com'}/api/email/contract`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: clientEmail,
+              name: profile?.name || sig,
+              contract_name: currentData?.project || 'Contrato de servicios',
+              pdf_url: pdfUrl,
+              doc_id: currentData?.doc_id || contractId,
+            }),
+          })
+        }
+      } catch (err) {
+        console.error('PDF/email error (non-blocking):', err)
+      }
     }
+
     return data
   }
 

@@ -16,6 +16,7 @@ import PortalDocumentos from './pages/portal/PortalDocumentos'
 import PortalMensajes from './pages/portal/PortalMensajes'
 import PortalReuniones from './pages/portal/PortalReuniones'
 import PortalContratos from './pages/portal/PortalContratos'
+import PortalHosting from './pages/portal/PortalHosting'
 
 // Admin — Core
 import Dashboard from './pages/nithrox/dashboard/Dashboard'
@@ -171,6 +172,7 @@ export default function App() {
                 <Route path="mensajes" element={<PortalMensajes />} />
                 <Route path="reuniones" element={<PortalReuniones />} />
                 <Route path="contratos" element={<PortalContratos />} />
+                <Route path="hosting" element={<PortalHosting />} />
               </Route>
 
               {/* Admin */}

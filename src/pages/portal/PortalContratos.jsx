@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { usePortalData } from '../../hooks/usePortalData'
-import { FileText, PenLine, CheckCircle2, Clock, X } from 'lucide-react'
+import { FileText, PenLine, CheckCircle2, Clock, X, Download } from 'lucide-react'
 
 // ── SignatureModal ──────────────────────────────────────────────────────────
 function SignatureModal({ contract, onClose, onSign }) {
@@ -214,12 +214,25 @@ export default function PortalContratos() {
                   </div>
                 </div>
 
-                {/* Completed certificate info */}
-                {isCompleted && (
-                  <div className="mt-3 pt-3 border-t border-zinc-100">
-                    <p className="text-[11px] text-zinc-400">
-                      Contrato completado y firmado por ambas partes. Puedes solicitar una copia al equipo de Nithrox a través de mensajes.
+                {/* Completed certificate info + PDF download */}
+                {(isCompleted || contract.status === 'client_signed') && (
+                  <div className="mt-3 pt-3 border-t border-zinc-100 flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-[11px] text-zinc-400 flex-1">
+                      {isCompleted
+                        ? 'Contrato completado y firmado por ambas partes.'
+                        : 'Firmado por ti — esperando firma de Nithrox.'}
                     </p>
+                    {contract.pdf_url && (
+                      <a
+                        href={contract.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-xs font-semibold hover:bg-zinc-200 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Descargar PDF
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
