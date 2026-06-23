@@ -6,7 +6,6 @@ import { DataProvider } from './context/DataContext'
 import Layout from './components/layout/Layout'
 import CommandPalette from './components/shared/CommandPalette'
 import LoginPage from './pages/auth/LoginPage'
-import LandingPage from './pages/landing/LandingPage'
 
 // Portal
 import PortalLayout from './pages/portal/PortalLayout'
@@ -100,7 +99,7 @@ export default function App() {
               toastOptions={{ style: { fontFamily: 'Geist Variable, sans-serif', fontSize: '13px', borderRadius: '12px' } }} />
             <Routes>
               {/* Public */}
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
               <Route path="/f/:formId" element={<PublicForm />} />
 

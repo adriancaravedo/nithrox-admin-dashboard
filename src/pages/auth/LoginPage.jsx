@@ -69,7 +69,13 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-        <div className="px-7 py-4 border-t border-zinc-100 bg-zinc-50 text-center">
+        <div className="px-7 py-4 border-t border-zinc-100 bg-zinc-50 text-center space-y-2">
+          <p className="text-xs text-zinc-500">
+            ¿Eres nuevo?{' '}
+            <a href="https://checkout.nithrox.com" className="text-zinc-900 font-bold hover:underline">
+              Obtén Nithrox →
+            </a>
+          </p>
           <p className="text-[10px] text-zinc-400">
             ¿Problemas? <a href="mailto:hola@nithrox.com" className="text-zinc-600 font-bold">hola@nithrox.com</a>
           </p>
