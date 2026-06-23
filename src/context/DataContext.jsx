@@ -14,6 +14,7 @@ export function DataProvider({ children }) {
     fetchCRM, fetchProjects, fetchMessages, fetchServers,
     fetchNotifications, fetchForms, fetchDocuments,
     fetchProposals, fetchContracts, fetchPortals, fetchTeam,
+    fetchOrders,
     appendRealtimeMessage,
   } = useStore()
 
@@ -33,6 +34,7 @@ export function DataProvider({ children }) {
       fetchContracts(),
       fetchPortals(),
       fetchTeam(),
+      fetchOrders(),
     ])
   }, [loading, user?.id, profile?.role])
 

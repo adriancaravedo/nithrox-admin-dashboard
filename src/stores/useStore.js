@@ -23,14 +23,15 @@ function shapeMsg(m) {
 }
 
 function shapeConversation(conv) {
+  const displayName = conv.contacts?.name || conv.profiles?.name || conv.client_name || ''
   return {
     id: conv.id,
     company_id: conv.company_id,
     contact_id: conv.contact_id,
     company: conv.companies?.name || '',
-    contact: conv.contacts?.name || '',
+    contact: displayName,
     avatar_color: conv.contacts?.avatar_color || '#64748b',
-    initials: (conv.contacts?.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
+    initials: displayName ? displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?',
     online: false,
     unread: conv.unread_admin || 0,
     last_message: conv.last_message || '',
@@ -683,6 +684,18 @@ export const useStore = create((set, get) => ({
   deleteContract: async (id) => {
     await db.contracts.delete(id)
     set(s => ({ contracts: s.contracts.filter(c => c.id !== id) }))
+  },
+
+  // ── Orders (from store) ─────────────────────────────────────
+  orders: [],
+
+  fetchOrders: async () => {
+    const { data } = await supabase
+      .from('orders')
+      .select('id, plan_id, plan_name, total_pen, status, payment_method, client_name, client_email, client_phone, payment_id, created_at, validated_at, items')
+      .order('created_at', { ascending: false })
+      .limit(500)
+    if (data) set({ orders: data })
   },
 
   // ── Portals ────────────────────────────────────────────────────

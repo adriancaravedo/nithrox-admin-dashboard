@@ -97,13 +97,7 @@ export default function ServicesTab() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(`
-          *,
-          hosting_orders (*),
-          domain_orders (*),
-          contacts:crm_contact_id (id, name, email, avatar_color),
-          projects:crm_project_id (id, name, status, type, start_date, end_date, budget)
-        `)
+        .select(`*, hosting_orders (*), domain_orders (*)`)
         .order('created_at', { ascending: false })
         .limit(200)
 

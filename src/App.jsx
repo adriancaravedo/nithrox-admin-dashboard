@@ -66,10 +66,69 @@ function Loading() {
   )
 }
 
+function VerifyEmail() {
+  const { user, logout } = useAuth()
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const { supabase: sb } = { supabase: null } // placeholder
+
+  async function resend() {
+    setLoading(true)
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const client = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      )
+      await client.auth.resend({ type: 'signup', email: user?.email })
+      setSent(true)
+    } catch { setSent(true) }
+    setLoading(false)
+  }
+
+  return (
+    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
+      <div className="flex items-center gap-2.5 mb-8">
+        <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center">
+          <span className="text-white font-black text-sm">NTX</span>
+        </div>
+        <span className="font-bold text-lg">Nithrox</span>
+      </div>
+      <div className="w-full max-w-sm bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-7 pt-7 pb-6 text-center">
+          <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">📧</span>
+          </div>
+          <h1 className="text-xl font-bold mb-2">Verifica tu correo</h1>
+          <p className="text-sm text-zinc-500 mb-1">
+            Enviamos un enlace de verificación a
+          </p>
+          <p className="text-sm font-bold text-zinc-800 mb-5">{user?.email}</p>
+          <p className="text-xs text-zinc-400 mb-6">
+            Revisa tu bandeja de entrada (y la carpeta de spam). Haz clic en el enlace para activar tu cuenta y acceder a tu panel.
+          </p>
+          {sent
+            ? <div className="text-xs text-green-600 font-medium bg-green-50 border border-green-200 rounded-xl p-3 mb-4">✓ Correo reenviado. Revisa tu bandeja.</div>
+            : <button onClick={resend} disabled={loading}
+                className="w-full py-2.5 bg-zinc-900 text-white font-bold rounded-xl text-sm hover:bg-zinc-700 disabled:opacity-50 transition-all mb-3">
+                {loading ? 'Enviando...' : 'Reenviar correo de verificación'}
+              </button>
+          }
+          <button onClick={logout} className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors">
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function RequireAuth({ children, adminOnly = false }) {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, emailVerified } = useAuth()
   if (loading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
+  // Non-admin clients must verify email before accessing portal
+  if (!adminOnly && !emailVerified && profile?.role !== 'admin') return <VerifyEmail />
   // Still waiting for profile to load from DB
   if (adminOnly && !profile) return <Loading />
   if (adminOnly && profile.role === '_loading') return <Loading />

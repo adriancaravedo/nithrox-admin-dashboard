@@ -390,14 +390,28 @@ function inferFunnelStep(state) {
 
 // ── Pedidos tab ────────────────────────────────────────────────
 function PedidosTab({ orders, loading, onRefresh }) {
-  const [view, setView] = useState('orders') // 'orders' | 'tracking'
+  const [view, setView] = useState('orders') // 'orders' | 'tracking' | 'clientes'
   const [filter, setFilter] = useState('all')
   const [expanded, setExpanded] = useState(null)
   const [drafts, setDrafts] = useState([])
   const [loadingDrafts, setLoadingDrafts] = useState(false)
   const [expandedDraft, setExpandedDraft] = useState(null)
+  const [clients, setClients] = useState([])
+  const [loadingClients, setLoadingClients] = useState(false)
 
   useEffect(() => {
+    if (view === 'clientes') {
+      setLoadingClients(true)
+      supabase
+        .from('profiles')
+        .select('id, name, email, phone, company, role, created_at')
+        .eq('role', 'client')
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error) setClients(data || [])
+          setLoadingClients(false)
+        })
+    }
     if (view !== 'tracking') return
     setLoadingDrafts(true)
     supabase
@@ -496,6 +510,13 @@ function PedidosTab({ orders, loading, onRefresh }) {
           style={{ background: view === 'tracking' ? 'hsl(var(--background))' : 'transparent', color: view === 'tracking' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
         >
           <Activity className="w-3 h-3" /> Seguimiento ({drafts.length})
+        </button>
+        <button
+          onClick={() => setView('clientes')}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md transition-colors"
+          style={{ background: view === 'clientes' ? 'hsl(var(--background))' : 'transparent', color: view === 'clientes' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
+        >
+          <Users className="w-3 h-3" /> Clientes ({clients.length})
         </button>
       </div>
 
@@ -655,6 +676,40 @@ function PedidosTab({ orders, loading, onRefresh }) {
         </>
       )}
 
+      {/* ── CLIENTES VIEW ──────────────────────────────── */}
+      {view === 'clientes' && (
+        loadingClients ? <LoadingState /> : (
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Clientes registrados en la tienda</p>
+              <span className="text-[10px] text-muted-foreground">{clients.length} clientes</span>
+            </div>
+            {clients.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-10">Ningún cliente registrado aún</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {clients.map(c => (
+                  <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0 uppercase">
+                      {(c.name || c.email || 'C')[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{c.name || '—'}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {c.email}{c.company ? ` · ${c.company}` : ''}{c.phone ? ` · ${c.phone}` : ''}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground shrink-0">
+                      {new Date(c.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      )}
+
       {/* ── TRACKING VIEW ───────────────────────────────── */}
       {view === 'tracking' && (
         <>
@@ -698,7 +753,8 @@ function PedidosTab({ orders, loading, onRefresh }) {
                       const domainName = st.domain?.full || '—'
                       const addonCount = (st.addons || []).length
                       const updatedAt = draft.updated_at ? new Date(draft.updated_at).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
-                      const displayId = draft.user_id ? `User ${draft.user_id.slice(0, 8)}…` : draft.session_id ? `Anón ${draft.session_id.slice(0, 8)}…` : 'Sin ID'
+                      const displayName = st.user_name || (draft.user_id ? `User ${draft.user_id.slice(0, 8)}…` : draft.session_id ? `Anón ${draft.session_id.slice(0, 8)}…` : 'Sin ID')
+                      const displayId = displayName
                       const STEP_LABELS = { plan: 'Plan', account: 'Cuenta', customize: 'Proyecto', hosting: 'Hosting', domain: 'Dominio', addons: 'Extras', review: 'Resumen', contract: 'Contrato', payment: 'Pago' }
                       const stepLabel = STEP_LABELS[stepFromDB] || stepFromDB || label
                       return (
@@ -718,7 +774,7 @@ function PedidosTab({ orders, loading, onRefresh }) {
                                 </span>
                               </div>
                               <p className="text-[11px] text-muted-foreground">
-                                {planName !== '—' && `Plan: ${planName}`}{addonCount > 0 && ` · ${addonCount} addon${addonCount > 1 ? 's' : ''}`} · {updatedAt}
+                                {st.user_email ? `${st.user_email} · ` : ''}{planName !== '—' ? `${planName}` : ''}{addonCount > 0 ? ` · ${addonCount} addon${addonCount > 1 ? 's' : ''}` : ''} · {updatedAt}
                               </p>
                             </div>
                             <div className="text-muted-foreground">
@@ -728,6 +784,15 @@ function PedidosTab({ orders, loading, onRefresh }) {
 
                           {isOpen && (
                             <div className="px-4 pb-4 bg-muted/10 border-t border-border pt-3 space-y-3">
+                              {/* User identity */}
+                              {(st.user_name || st.user_email) && (
+                                <div className="grid grid-cols-2 gap-3 text-xs pb-2 border-b border-border">
+                                  {st.user_name && <div><p className="text-muted-foreground mb-0.5">Nombre</p><p className="font-semibold">{st.user_name}</p></div>}
+                                  {st.user_email && <div><p className="text-muted-foreground mb-0.5">Email</p><p className="font-semibold truncate">{st.user_email}</p></div>}
+                                  {st.user_phone && <div><p className="text-muted-foreground mb-0.5">Teléfono</p><p className="font-semibold">{st.user_phone}</p></div>}
+                                  {st.user_company && <div><p className="text-muted-foreground mb-0.5">Empresa</p><p className="font-semibold">{st.user_company}</p></div>}
+                                </div>
+                              )}
                               <div className="grid grid-cols-2 gap-3 text-xs">
                                 <div>
                                   <p className="text-muted-foreground mb-0.5">Plan</p>
@@ -1323,39 +1388,80 @@ function ConfigTab({ methods, onSave, loading }) {
         </div>
         <div className="px-4 py-4 space-y-3">
           <p className="text-xs text-muted-foreground">Si "Guardar" muestra error de tabla no encontrada, ejecuta este SQL en el editor de Supabase (Database → SQL Editor):</p>
-          <pre className="text-[10px] font-mono bg-muted rounded-lg p-3 overflow-x-auto leading-relaxed text-muted-foreground">{`-- Tabla de configuración de la tienda
+          <pre className="text-[10px] font-mono bg-muted rounded-lg p-3 overflow-x-auto leading-relaxed text-muted-foreground">{`-- CORRE ESTO COMPLETO EN SUPABASE → SQL EDITOR
+-- Paso 1: función helper (evita recursión RLS)
+create or replace function is_admin()
+returns boolean language sql security definer stable as $$
+  select exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+$$;
+
+-- Paso 2: fix política recursiva en profiles
+drop policy if exists "Admins can read all profiles" on profiles;
+create policy "Admins can read all profiles" on profiles for select using (is_admin());
+
+-- Paso 3: store_config
 create table if not exists store_config (
-  id text primary key,
-  value jsonb not null,
-  updated_at timestamptz default now()
+  id text primary key, value jsonb not null default '{}',
+  updated_at timestamptz not null default now()
 );
 alter table store_config enable row level security;
-create policy if not exists "Anyone can read store_config"
-  on store_config for select using (true);
-create policy if not exists "Admins can manage store_config"
-  on store_config for all
-  using (exists (
-    select 1 from profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  ))
-  with check (exists (
-    select 1 from profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  ));
+drop policy if exists "Anyone can read store_config" on store_config;
+drop policy if exists "Admins can manage store_config" on store_config;
+create policy "Anyone can read store_config" on store_config for select using (true);
+create policy "Admins can manage store_config" on store_config for all
+  using (is_admin()) with check (is_admin());
 
--- Tabla de borradores de checkout
+-- Paso 4: order_drafts
 create table if not exists order_drafts (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id),
-  state jsonb,
-  updated_at timestamptz default now()
+  user_id uuid, session_id text, current_step text,
+  state jsonb, updated_at timestamptz not null default now()
 );
+create unique index if not exists order_drafts_user_id_idx
+  on order_drafts(user_id) where user_id is not null;
+create unique index if not exists order_drafts_session_id_idx
+  on order_drafts(session_id) where session_id is not null and user_id is null;
 alter table order_drafts enable row level security;
-create policy if not exists "Anyone can upsert drafts"
-  on order_drafts for all using (true) with check (true);`}</pre>
+drop policy if exists "Anyone can upsert drafts" on order_drafts;
+create policy "Anyone can upsert drafts" on order_drafts for all using (true) with check (true);
+
+-- Paso 5: orders (si no existe)
+create table if not exists orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete set null,
+  plan_id text, plan_name text, items jsonb, total_pen numeric(10,2),
+  status text not null default 'pending', payment_method text,
+  payment_id text, signature_url text, notes text,
+  client_name text, client_email text, client_phone text, client_company text,
+  validated_at timestamptz,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+alter table orders enable row level security;
+drop policy if exists "Users can read own orders" on orders;
+drop policy if exists "Users can insert own orders" on orders;
+drop policy if exists "Admins can read all orders" on orders;
+drop policy if exists "Admins can update orders" on orders;
+create policy "Users can read own orders" on orders for select using (auth.uid() = user_id);
+create policy "Users can insert own orders" on orders for insert with check (auth.uid() = user_id or user_id is null);
+create policy "Admins can read all orders" on orders for select using (is_admin());
+create policy "Admins can update orders" on orders for update using (is_admin());
+
+-- Paso 6: sync role → JWT
+create or replace function sync_role_to_jwt()
+returns trigger language plpgsql security definer as $$
+begin
+  update auth.users set raw_app_meta_data =
+    coalesce(raw_app_meta_data,'{}') || jsonb_build_object('role', new.role)
+  where id = new.id; return new;
+end;$$;
+drop trigger if exists on_profile_role_change on profiles;
+create trigger on_profile_role_change after insert or update of role on profiles
+  for each row execute function sync_role_to_jwt();
+update profiles set role = role;`}</pre>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(`create table if not exists store_config (id text primary key, value jsonb not null, updated_at timestamptz default now());\nalter table store_config enable row level security;\ncreate policy if not exists "Anyone can read store_config" on store_config for select using (true);\ncreate policy if not exists "Admins can manage store_config" on store_config for all using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')) with check (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));`)
+              const sql = `create or replace function is_admin() returns boolean language sql security definer stable as $$ select exists (select 1 from profiles where id = auth.uid() and role = 'admin') $$;\ndrop policy if exists "Admins can read all profiles" on profiles;\ncreate policy "Admins can read all profiles" on profiles for select using (is_admin());\ncreate table if not exists store_config (id text primary key, value jsonb not null default '{}', updated_at timestamptz not null default now());\nalter table store_config enable row level security;\ndrop policy if exists "Anyone can read store_config" on store_config;\ndrop policy if exists "Admins can manage store_config" on store_config;\ncreate policy "Anyone can read store_config" on store_config for select using (true);\ncreate policy "Admins can manage store_config" on store_config for all using (is_admin()) with check (is_admin());\ncreate table if not exists order_drafts (id uuid primary key default gen_random_uuid(), user_id uuid, session_id text, current_step text, state jsonb, updated_at timestamptz not null default now());\ncreate unique index if not exists order_drafts_user_id_idx on order_drafts(user_id) where user_id is not null;\ncreate unique index if not exists order_drafts_session_id_idx on order_drafts(session_id) where session_id is not null and user_id is null;\nalter table order_drafts enable row level security;\ndrop policy if exists "Anyone can upsert drafts" on order_drafts;\ncreate policy "Anyone can upsert drafts" on order_drafts for all using (true) with check (true);`
+              navigator.clipboard.writeText(sql)
               toast.success('SQL copiado al portapapeles')
             }}
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"

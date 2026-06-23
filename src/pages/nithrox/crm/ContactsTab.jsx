@@ -9,20 +9,20 @@ const formatCRMDate = (d) => {
 }
 import { loadState } from '../../../lib/persist'
 import CRMTable from '../../../components/shared/CRMTable'
-import { Trash2, X, Mail, Phone, MessageSquare, ExternalLink, Pencil, Eye } from 'lucide-react'
+import { Trash2, X, Mail, Phone, MessageSquare, ExternalLink, Pencil, Eye, CheckCircle2 } from 'lucide-react'
 import { Label } from '../../../components/ui/label'
 import { Button } from '../../../components/ui/button'
 import { TypedInput } from '../../../components/shared/ColFields'
 import { COL_DEFS_KEY_CONTACTS } from '../../../lib/columnTypes'
 
 export const CONTACTS_DEFAULT_COLS = [
-  { id: 'name',          label: 'Nombre',   width: 220, fixed: true, type: 'text' },
-  { id: 'health_score',  label: 'Health',   width: 80,  type: 'text' },
-  { id: 'email',         label: 'Email',    width: 200, type: 'email' },
-  { id: 'phone',         label: 'Teléfono', width: 150, type: 'phone' },
-  { id: 'company',       label: 'Empresa',  width: 150, type: 'text' },
-  { id: 'lead_status',   label: 'Estado',   width: 120, type: 'text' },
-  { id: 'created_at',    label: 'Creado',   width: 130, type: 'text' },
+  { id: 'name',          label: 'Nombre',       width: 220, fixed: true, type: 'text' },
+  { id: 'ntx_customer',  label: 'NTX Customer', width: 110, type: 'text' },
+  { id: 'email',         label: 'Email',        width: 200, type: 'email' },
+  { id: 'phone',         label: 'Teléfono',     width: 150, type: 'phone' },
+  { id: 'company',       label: 'Empresa',      width: 150, type: 'text' },
+  { id: 'lead_status',   label: 'Estado',       width: 120, type: 'text' },
+  { id: 'created_at',    label: 'Creado',       width: 130, type: 'text' },
 ]
 
 const LEAD_STATUS_STYLES = {
@@ -34,50 +34,10 @@ const LEAD_STATUS_STYLES = {
   Lost:       'bg-red-100 text-red-600',
 }
 
-function computeHealthScore(contact, { messages, projects, contracts, meetings }) {
-  let score = 0
-
-  // Conversation recency (0-30)
-  const conv = messages.find(m => m.contact_id === contact.id)
-  if (conv?.last_at) {
-    const days = (Date.now() - new Date(conv.last_at)) / (1000 * 60 * 60 * 24)
-    if (days < 7) score += 30
-    else if (days < 30) score += 20
-    else if (days < 90) score += 10
-  }
-
-  // Active project (0-25)
-  if (projects.some(p => p.contact_id === contact.id || (contact.company_id && p.company_id === contact.company_id))) {
-    score += 25
-  }
-
-  // Signed contract (0-25)
-  if (contracts.some(c => c.contact_id === contact.id && c.status === 'signed')) {
-    score += 25
-  }
-
-  // Upcoming confirmed meeting (0-20)
-  if (meetings.some(m =>
-    m.contact_id === contact.id &&
-    m.status === 'confirmed' &&
-    new Date(m.date) > new Date()
-  )) {
-    score += 20
-  }
-
-  return score
-}
-
-function HealthBadge({ score }) {
-  const color = score >= 75 ? 'bg-green-100 text-green-700'
-    : score >= 50 ? 'bg-yellow-100 text-yellow-700'
-    : score >= 25 ? 'bg-orange-100 text-orange-700'
-    : 'bg-red-100 text-red-500'
-  return (
-    <span className={`inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-full tabular-nums ${color}`}>
-      {score}
-    </span>
-  )
+function NtxCustomerBadge({ isCustomer }) {
+  return isCustomer
+    ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3" />Cliente</span>
+    : <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-400">—</span>
 }
 
 function EditPanel({ contact, companies, customCols, onSave, onClose }) {
@@ -164,7 +124,7 @@ function EditPanel({ contact, companies, customCols, onSave, onClose }) {
 }
 
 export default function ContactsTab({ showAddSection, onCloseAddSection }) {
-  const { contacts, companies, messages, projects, contracts, meetings, updateContact, deleteContact } = useStore()
+  const { contacts, companies, messages, projects, contracts, meetings, orders = [], updateContact, deleteContact } = useStore()
   const navigate = useNavigate()
   const [selected, setSelected] = useState([])
   const [editContact, setEditContact] = useState(null)
@@ -172,7 +132,7 @@ export default function ContactsTab({ showAddSection, onCloseAddSection }) {
     loadState(COL_DEFS_KEY_CONTACTS, []).filter(c => c.id?.startsWith('col_'))
   )
 
-  const storeData = useMemo(() => ({ messages, projects, contracts, meetings }), [messages, projects, contracts, meetings])
+  const storeData = useMemo(() => ({ messages, projects, contracts, meetings, orders }), [messages, projects, contracts, meetings, orders])
 
   const handleColsChange = (cols) => {
     setCustomCols(cols.filter(c => c.id?.startsWith('col_')))
@@ -239,9 +199,11 @@ export default function ContactsTab({ showAddSection, onCloseAddSection }) {
         </div>
       )
 
-      case 'health_score': {
-        const score = computeHealthScore(contact, storeData)
-        return <HealthBadge score={score} />
+      case 'ntx_customer': {
+        const isCustomer = storeData.orders?.some(o =>
+          o.client_email === contact.email && ['active', 'paid'].includes(o.status)
+        )
+        return <NtxCustomerBadge isCustomer={isCustomer} />
       }
 
       case 'email': return contact.email

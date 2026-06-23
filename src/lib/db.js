@@ -46,7 +46,7 @@ export const db = {
     create: (data) => supabase.from('conversations').insert(data).select().single(),
     list: () => supabase
       .from('conversations')
-      .select('*, contacts(id,name,avatar_color), companies(id,name), messages(*)')
+      .select('*, contacts(id,name,avatar_color), companies(id,name), profiles(id,name,email), messages(*)')
       .order('last_at', { ascending: false }),
     get: (id) => supabase
       .from('conversations')

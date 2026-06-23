@@ -9,15 +9,15 @@ const formatCRMDate = (d) => {
 }
 import { loadState } from '../../../lib/persist'
 import CRMTable from '../../../components/shared/CRMTable'
-import { Trash2, X, Phone, MessageSquare, ExternalLink, Pencil, Eye, Building2 } from 'lucide-react'
+import { Trash2, X, Phone, MessageSquare, ExternalLink, Pencil, Eye, Building2, CheckCircle2 } from 'lucide-react'
 import { Label } from '../../../components/ui/label'
 import { Button } from '../../../components/ui/button'
 import { TypedInput } from '../../../components/shared/ColFields'
 import { COL_DEFS_KEY_COMPANIES } from '../../../lib/columnTypes'
 
 export const COMPANIES_DEFAULT_COLS = [
-  { id: 'name',          label: 'Empresa',         width: 220, fixed: true, type: 'text' },
-  { id: 'health_score',  label: 'Health',           width: 80,  type: 'text' },
+  { id: 'name',          label: 'Empresa',          width: 220, fixed: true, type: 'text' },
+  { id: 'ntx_customer',  label: 'NTX Customer',     width: 110, type: 'text' },
   { id: 'owner',         label: 'Owner',             width: 150, type: 'text' },
   { id: 'phone',         label: 'Teléfono',          width: 150, type: 'phone' },
   { id: 'industry',      label: 'Industria',         width: 130, type: 'text' },
@@ -25,6 +25,12 @@ export const COMPANIES_DEFAULT_COLS = [
   { id: 'last_activity', label: 'Última actividad',  width: 150, type: 'text' },
   { id: 'created_at',    label: 'Creado',            width: 130, type: 'text' },
 ]
+
+function NtxCustomerBadge({ isCustomer }) {
+  return isCustomer
+    ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3" />Cliente</span>
+    : <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-400">—</span>
+}
 
 function computeCompanyHealthScore(company, contacts, { messages, projects, contracts, meetings }) {
   // All contacts that belong to this company
@@ -143,7 +149,7 @@ function EditPanel({ company, customCols, onSave, onClose }) {
 }
 
 export default function CompaniesTab({ showAddSection, onCloseAddSection }) {
-  const { companies, contacts, messages, projects, contracts, meetings, updateCompany, deleteCompany } = useStore()
+  const { companies, contacts, messages, projects, contracts, meetings, orders = [], updateCompany, deleteCompany } = useStore()
   const navigate = useNavigate()
   const [selected, setSelected] = useState([])
   const [editCompany, setEditCompany] = useState(null)
@@ -151,7 +157,7 @@ export default function CompaniesTab({ showAddSection, onCloseAddSection }) {
     loadState(COL_DEFS_KEY_COMPANIES, []).filter(c => c.id?.startsWith('col_'))
   )
 
-  const storeData = useMemo(() => ({ messages, projects, contracts, meetings }), [messages, projects, contracts, meetings])
+  const storeData = useMemo(() => ({ messages, projects, contracts, meetings, orders }), [messages, projects, contracts, meetings, orders])
 
   const openEdit = (id) => {
     const c = companies.find(x => x.id === id)
@@ -204,9 +210,12 @@ export default function CompaniesTab({ showAddSection, onCloseAddSection }) {
         </div>
       )
 
-      case 'health_score': {
-        const score = computeCompanyHealthScore(company, contacts, storeData)
-        return <HealthBadge score={score} />
+      case 'ntx_customer': {
+        const companyEmails = contacts.filter(c => c.company_id === company.id).map(c => c.email)
+        const isCustomer = storeData.orders?.some(o =>
+          companyEmails.includes(o.client_email) && ['active', 'paid'].includes(o.status)
+        )
+        return <NtxCustomerBadge isCustomer={isCustomer} />
       }
 
       case 'last_activity':

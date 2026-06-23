@@ -18,6 +18,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../../lib/db'
 import { toast } from 'sonner'
+import { supabase } from '../../../lib/supabase'
 import {
   Mail, Phone, ListTodo, Calendar, Plus, Trash2, Pin,
   GripVertical, Check, X, ExternalLink, FileText, Building2,
@@ -77,7 +78,7 @@ const CONTRACT_STATUS = {
 export default function ContactDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { contacts, companies, deals, contracts: storeContracts, projects, messages: conversations, updateContact, addCompany, addDeal } = useStore()
+  const { contacts, companies, deals, contracts: storeContracts, projects, messages: conversations, orders = [], updateContact, addCompany, addDeal } = useStore()
 
   const contact = contacts.find(c => c.id === id)
   if (!contact) return (
@@ -92,6 +93,7 @@ export default function ContactDetail() {
   const contactContracts = (storeContracts || []).filter(c => c.contact_id === id)
   const contactProjects = (projects || []).filter(p => p.contact_id === id || p.company_id === contact.company_id)
   const contactConversation = (conversations || []).find(m => m.contact_id === id)
+  const contactOrders = orders.filter(o => o.client_email === contact.email)
 
   // Load active columns from CRM table config (same source as the table view)
   const activeCols = loadState(COL_DEFS_KEY_CONTACTS, CONTACTS_DEFAULT_COLS)
@@ -282,14 +284,15 @@ export default function ContactDetail() {
 
         {/* CENTER — Activities / Notas */}
         <div className="flex-1 overflow-hidden flex flex-col border-r border-border">
-          <div className="flex border-b border-border shrink-0">
+          <div className="flex border-b border-border shrink-0 overflow-x-auto">
             {[
               { id: 'activities', label: 'Activities' },
               { id: 'notas', label: 'Notas' },
+              { id: 'servicios', label: `Servicios${contactOrders.length ? ` (${contactOrders.length})` : ''}` },
               { id: 'portal', label: 'Portal' },
             ].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${activeTab === tab.id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                 {tab.label}
               </button>
             ))}
@@ -364,6 +367,79 @@ export default function ContactDetail() {
                       onDelete={(nid) => setNotes(p => p.filter(n => n.id !== nid))} />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'servicios' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Servicios contratados</h3>
+                  {contactOrders.length > 0 && (
+                    <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">NTX Customer</span>
+                  )}
+                </div>
+                {contactOrders.length === 0 ? (
+                  <div className="border border-dashed border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
+                    Sin servicios contratados
+                  </div>
+                ) : contactOrders.map(order => {
+                  const statusColors = {
+                    active: 'bg-green-100 text-green-700',
+                    paid: 'bg-green-100 text-green-700',
+                    pending: 'bg-yellow-100 text-yellow-700',
+                    cancelled: 'bg-red-100 text-red-600',
+                    payment_failed: 'bg-red-100 text-red-600',
+                  }
+                  const statusLabels = {
+                    active: 'Activo', paid: 'Pagado', pending: 'Pendiente',
+                    cancelled: 'Cancelado', payment_failed: 'Pago fallido',
+                  }
+                  return (
+                    <div key={order.id} className="border border-border rounded-xl p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-bold">{order.plan_name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(order.created_at).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {' · '}{order.payment_method}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[order.status] || 'bg-zinc-100 text-zinc-500'}`}>
+                            {statusLabels[order.status] || order.status}
+                          </span>
+                          <span className="text-sm font-bold">S/ {order.total_pen}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={async () => {
+                            await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id)
+                            toast.success('Servicio suspendido')
+                          }}
+                          className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          Suspender
+                        </button>
+                        <button
+                          onClick={() => navigate(`/messages?contactId=${id}`)}
+                          className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors"
+                        >
+                          Enviar recordatorio
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await supabase.from('orders').update({ status: 'active' }).eq('id', order.id)
+                            toast.success('Servicio reactivado')
+                          }}
+                          className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 transition-colors"
+                        >
+                          Reactivar
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 

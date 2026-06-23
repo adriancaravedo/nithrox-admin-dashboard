@@ -125,6 +125,7 @@ export function AuthProvider({ children }) {
       isAdmin: profile?.role === 'admin',
       isClient: profile?.role === 'client',
       role: profile?.role,
+      emailVerified: !!(user?.email_confirmed_at),
       login, logout,
     }}>
       {children}

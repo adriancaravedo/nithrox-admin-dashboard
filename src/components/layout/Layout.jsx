@@ -6,7 +6,7 @@ import InventoryPage from '../../pages/nithrox/inventory/InventoryPage'
 import TradingPage from '../../pages/algolowyx/TradingPage'
 import {
   Package, Tag, BarChart3, Link2,
-  BookOpen, Activity, DollarSign, LayoutDashboard,
+  BookOpen, Activity, DollarSign, LayoutDashboard, Menu,
 } from 'lucide-react'
 
 // ── Per-business sidebar configs ──────────────────────────────
@@ -81,6 +81,16 @@ function LayoutInner() {
       )}
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-background shrink-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-bold text-sm">Nithrox</span>
+        </div>
         <Outlet />
       </div>
     </div>

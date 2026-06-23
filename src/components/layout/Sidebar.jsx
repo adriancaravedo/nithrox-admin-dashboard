@@ -126,10 +126,10 @@ export default function Sidebar() {
   const isCollapsed = collapsed && !mobileOpen
 
   const sidebarClass = cn(
-    'flex flex-col bg-background border-r border-border transition-all duration-300 z-50 select-none',
+    'flex flex-col bg-background border-r border-border transition-all duration-300 z-50 select-none overflow-y-auto',
     'hidden lg:flex',
     collapsed ? 'w-14' : 'w-52',
-    mobileOpen && '!flex fixed inset-y-0 left-0 w-64 shadow-2xl',
+    mobileOpen && '!flex fixed inset-y-0 left-0 w-72 shadow-2xl',
   )
 
   const getBadge = (badge) => {
